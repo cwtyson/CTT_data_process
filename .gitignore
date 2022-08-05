@@ -7,3 +7,6 @@
 **/*.jpg
 **/*.Rdata
 **/*.csv
+
+## Ignore profile informatin
+/R/profile_info.R
