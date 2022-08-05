@@ -1,12 +1,12 @@
 #' Make summary table of tag detections
 #'
-#' @param det_file Detection file (either absolute or relative path)
+#' @param dets_data_file Detection file (either absolute or relative path)
 #' @param plot_type Either "summary", "individual" or "none". Summary will make one plot with a row for each node. Individual will create separate plots for each node
 #' @param interval Interval to summarize the data for plotting. Default is one day
 #' @param summary_folder Location to save summary
 #' @param plot_folder Location to save plot
 
-summarize_dets <- function(det_file = as.character(),
+summarize_dets <- function(dets_data_file = as.character(),
                            plot_type = "summary",
                            interval = "day",
                            summary_folder = as.character(),
@@ -15,7 +15,7 @@ summarize_dets <- function(det_file = as.character(),
   cat("Starting to summarize detections\n")
   
   ## Read in detections
-  dets <- readRDS(here::here(det_file))
+  dets <- readRDS(here::here(dets_data_file))
   
   ## Summarize detections
   dets_sum <- dets %>% 
@@ -31,7 +31,7 @@ summarize_dets <- function(det_file = as.character(),
   readr::write_csv(dets_sum,
                    here::here(paste0(summary_folder, "/detection_summary.csv")))
   
-  cat("Saved summary ")
+  cat("Saved summary\n")
   
   if(plot_type == "summary"){
     
@@ -58,6 +58,8 @@ summarize_dets <- function(det_file = as.character(),
     suppressMessages(ggsave(here::here(plot_folder, "detections/detections_summary_plot.jpg"),
                             plot = dets_sum_plot))
     
+    cat("Finished plotting overall detection summary\n")
+    
   }
   
   if(plot_type == "individual"){
@@ -66,8 +68,6 @@ summarize_dets <- function(det_file = as.character(),
     for(tag_f in unique(dets$tag)){
       
       # tag_f = unique(dets$tag)[1]
-      
-      cat("Summarizing and plotting tag: ", tag_f)
       
       ## Summarize to plot
       dets_sum_2plot <- dets %>% 
@@ -95,13 +95,15 @@ summarize_dets <- function(det_file = as.character(),
       suppressMessages(ggsave(here::here(paste0(plot_folder, "detections/individual/", tag_f, "_detections_plot.jpg")),
                               plot = dets_ind_plot))
       
+      cat("Finished plotting tag: ", tag_f, "\n")
+      
     }
     
   }
   
   if(plot_type == "none"){
     
-    cat("Not creating summary plots")
+    cat("Not creating summary plots\n")
     
   }
   

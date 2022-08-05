@@ -5,7 +5,7 @@
 #' @param db_password Password for db user 
 #' @param tag_log_file Tag log file (.xlsx). This file has the deployed tags and information about when the tag was deployed, the species, etc.
 #' @param node_log_file Node log file (.xlsx). This file has the times when a node was associated with a grid point.
-#' @param sensor_station_code Code of sensor stations to use.  Multiple sensor station codes can be accepted as a vector.
+#' @param sensor_station_code Code of sensor stations to use. If not specified, all sensor stations will be used. Multiple sensor station codes can be accepted as a vector.
 #' @param tz Time zone. Time zone where the sensor station is located. Should be one of OlsonNames().
 #' @param output_folder Location to save RData file
 
@@ -13,22 +13,31 @@ process_dets <- function(db_name = as.character(),
                          db_user = as.character(),
                          db_password = as.character(),
                          tag_log_file = as.character(),
-                         sensor_station_code = as.character(),
+                         sensor_station_code = NULL,
                          node_log_file = as.character(),
                          tz = "UTC",
                          output_folder = as.character()){
   
-  ## Connect to data base back end
-  dets_db <- DBI::dbConnect(RPostgres::Postgres(),
-                            dbname = db_name,
-                            user = db_user,
-                            password = db_password) %>%
-    dplyr::tbl("raw")
-  
   cat("Starting to process detection data\n")
   
+  ## Connect to data base back end
+  conn <- DBI::dbConnect(RPostgres::Postgres(),
+                            dbname = db_name,
+                            user = db_user,
+                            password = db_password) 
+  
+  ## Station id is null, use all
+  if(is.null(sensor_station_code)){
+    
+    sensor_station_code <- dplyr::tbl(conn, "raw") %>%
+      dplyr::distinct(station_id) %>% 
+      dplyr::collect() %>% 
+      dplyr::pull(station_id)
+    
+  }
+  
   ## Read in detections from postgres database
-  dets_r <- dets_db %>%
+  dets_r <- dplyr::tbl(conn, "raw") %>%
     
     ## Keep only station ids matching the specified filter
     dplyr::filter(station_id %in% sensor_station_code) %>% 
@@ -53,7 +62,7 @@ process_dets <- function(db_name = as.character(),
   ## Save as RData
   saveRDS(dets_p,
           file = here::here(output_folder,
-                            "dets_all.Rdata"))
+                            "/dets_all.Rdata"))
   
   cat("Saved raw detection data\n")
   
@@ -110,7 +119,7 @@ process_dets <- function(db_name = as.character(),
   ## Save as RData
   saveRDS(dets_f1,
           file = here::here(output_folder,
-                            "dets_filtered.Rdata"))
+                            "/dets_filtered.Rdata"))
 
   cat("Saved filtered detection data\n")
   

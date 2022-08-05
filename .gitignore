@@ -1,8 +1,9 @@
 .Rproj.user
 .Rhistory
-.RData
 .Ruserdata
 
-*.DS_Store
-
-.jpg
+## File types to ignore
+**/*.DS_Store
+**/*.jpg
+**/*.Rdata
+**/*.csv

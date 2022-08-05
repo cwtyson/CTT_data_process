@@ -4,7 +4,7 @@
 #' @param db_user User name for postgres database
 #' @param db_password Password for db user 
 #' @param node_log_file Node log file (.xlsx). This file says when a node was associated with a grid point.
-#' @param sensor_station_code Code of sensor stations to use.  Multiple sensor station codes can be accepted as a vector.
+#' @param sensor_station_code Code of sensor stations to use. If not specified, all sensor stations will be used. Multiple sensor station codes can be accepted as a vector.
 #' @param tz Time zone. Time zone where the sensor station is located. Should be one of OlsonNames().
 #' @param output_folder Location to save RData file
 
@@ -12,9 +12,11 @@ process_nodes <- function(db_name = as.character(),
                           db_user = as.character(),
                           db_password = as.character(),
                           node_log_file = as.character(),
-                          sensor_station_code = as.character(),
+                          sensor_station_code = NULL,
                           tz = "UTC",
                           output_folder = as.character()){
+  
+  cat("Starting to process node data\n")
   
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
@@ -22,8 +24,21 @@ process_nodes <- function(db_name = as.character(),
                          user = db_user,
                          password = db_password)
   
+  ## Station id is null, use all
+  if(is.null(sensor_station_code)){
+    
+    sensor_station_code <- dplyr::tbl(conn, "node_health") %>%
+      dplyr::distinct(station_id) %>% 
+      dplyr::collect() %>% 
+      dplyr::pull(station_id)
+    
+  }
+  
   ## Read in node health data base
   nodes_db <- dplyr::tbl(conn, "node_health") %>%
+    
+    ## Keep only station ids matching the specified filter
+    dplyr::filter(station_id %in% sensor_station_code) %>% 
     dplyr::collect() %>%
     
     ## Select (and rename) relevant columns
@@ -41,7 +56,7 @@ process_nodes <- function(db_name = as.character(),
                    date_time)
   
   ## Read in node log and reformat
-  node_log <- suppressWarnings(readxl::read_excel(path = node_log) %>%
+  node_log <- suppressWarnings(readxl::read_excel(path = node_log_file) %>%
                                  dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(date_on, time_on), "dmy HM", tz = tz),
                                                removal_time = lubridate::parse_date_time(paste(date_off, time_off), "dmy HM"), tz = tz) %>%
                                  dplyr::select(node = node_code,
@@ -79,6 +94,6 @@ process_nodes <- function(db_name = as.character(),
           file = paste0(output_folder,
                         "/node_health.Rdata"))
   
-  cat("Saved updated node data")
+  cat("Saved updated node data\n")
   
 }
