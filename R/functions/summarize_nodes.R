@@ -25,7 +25,6 @@ summarize_nodes <- function(node_data_file = as.character(),
   
   ## Summarize node file
   nodes_sum <- nodes %>% 
-    dplyr::slice(1:100000) %>%
     dplyr::mutate(date_r = lubridate::round_date(date_time, unit = interval)) %>%
     dplyr::group_by(grid_point, date_r) %>% 
     dplyr::summarize(mean_solar_volt = mean(solar_volts, na.rm = T),
@@ -37,7 +36,6 @@ summarize_nodes <- function(node_data_file = as.character(),
     
     ## Summarize detections and join
     dplyr::left_join(dets %>% 
-                       dplyr::slice(1:100000) %>%
                        dplyr::mutate(date_r = lubridate::round_date(date_time, unit = interval)) %>%
                        dplyr::group_by(grid_point, date_r) %>% 
                        dplyr::summarise(dets = dplyr::n(),
@@ -48,9 +46,9 @@ summarize_nodes <- function(node_data_file = as.character(),
   
   ## Save summary table
   readr::write_csv(nodes_sum,
-                   here::here(summary_folder))
+                   here::here(paste0(summary_folder, "/node_summary.csv")))
   
-  cat("Saved summary\n")
+  cat("Saved node summary\n")
   
   ## Depending on plot type:
   if(plot == "summary"){
@@ -70,7 +68,7 @@ summarize_nodes <- function(node_data_file = as.character(),
     suppressMessages(ggsave(here::here(plot_folder, "detections_summary_plot.jpg"),
                             plot = dets_sum_plot))
     
-    cat("Finished plotting overall detection summary\n")
+    cat("Finished plotting overall node summary\n")
     
   }
   
@@ -104,7 +102,7 @@ summarize_nodes <- function(node_data_file = as.character(),
       suppressMessages(ggsave(here::here(paste0(plot_folder, "detections/individual/", gp_f, "_health_plot.jpg")),
                               plot = gp_ind_plot))
       
-      cat("Finished plotting tag: ", tag_f, "\n")
+      cat("Finished plotting node summary: ", gp_f, "\n")
       
     }
     

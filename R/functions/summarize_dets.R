@@ -31,7 +31,7 @@ summarize_dets <- function(dets_data_file = as.character(),
   readr::write_csv(dets_sum,
                    here::here(paste0(summary_folder, "/detection_summary.csv")))
   
-  cat("Saved summary\n")
+  cat("Saved detection summary\n")
   
   if(plot_type == "summary"){
     
