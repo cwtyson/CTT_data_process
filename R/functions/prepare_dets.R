@@ -33,13 +33,7 @@ prepare_dets <- function(processed_dets_file = as.character(),
   
   ## Tags to process
   tags <- unique(dets$tag)
-  
-  ## If "prepared_detections" sub-directory does not exist, create it
-  if(!dir.exists(paste0(output_folder, "/prepared_detections/"))){
-    
-    dir.create(paste0(output_folder, "/prepared_detections/"))  
-  }
-  
+
   ## Set progress bar
   pb <- txtProgressBar(min = 0, max = length(tags), style = 3)
   
@@ -65,7 +59,6 @@ prepare_dets <- function(processed_dets_file = as.character(),
     
     ## Get days that have already been prepared for the tag
     prepared_files <- gsub(x = list.files(paste0(output_folder,
-                                                 "/prepared_detections/",
                                                  tag_f),
                                           pattern = ".csv"),
                            pattern = ".csv",
@@ -225,16 +218,15 @@ prepare_dets <- function(processed_dets_file = as.character(),
             dplyr::mutate(date_round = lubridate::round_date(dt_r, unit = "day"))
           
           ## Create directory if needed
-          if(!dir.exists(paste0(output_folder, "/prepared_detections/", tag_f))){
+          if(!dir.exists(paste0(output_folder, "/prepared/", tag_f))){
             
-            dir.create(paste0(output_folder, "/prepared_detections/", tag_f))  
+            dir.create(paste0(output_folder, "/prepared/", tag_f))  
           }
           
           ## Split based on date round and save
           dt_r_dets_w %>% 
             dplyr::group_by(date_round) %>% 
             dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
-                                              "/prepared_detections/",
                                               tag_f,
                                               "/",
                                               .y$date_round,
