@@ -1,4 +1,4 @@
-suppressMessages(library(tidyverse))
+library(tidyverse, warn.conflicts = FALSE); library(geosphere)
 
 ## Source files
 source(here::here("./R/profile_info.R"))
@@ -7,6 +7,7 @@ source(here::here("./R/functions/process_nodes.R"))
 source(here::here("./R/functions/summarize_dets.R"))
 source(here::here("./R/functions/summarize_nodes.R"))
 source(here::here("./R/functions/prepare_dets.R"))
+source(here::here("./R/functions/localize.R"))
 
 # ## Process detection data
 # process_dets(db_name = db_name,
@@ -45,10 +46,14 @@ source(here::here("./R/functions/prepare_dets.R"))
 ## Prepare detection data to localize
 prepare_dets(processed_dets_file = "./Eswatini/data/processed/dets_filtered.Rdata",
              grid_point_file = "./Eswatini/data/field_data/processed_field_data/grid_point_locations.RData",
-             output_folder = "./Eswatini/data/processed/",
+             output_folder = "./Eswatini/data/processed/prepared/",
              window = "30 secs",
              lag = "-15 secs",
              dist_filter = 200)
 
 ## Localize detections
-
+localize(input_folder = "./Eswatini/data/processed/prepared/",
+         output_folder = "./Eswatini/data/processed/localized/",
+         grid_point_file = "./Eswatini/data/field_data/processed_field_data/grid_point_locations.RData",
+         RSSI_model_file = "R/data/RSSI_log_distance_lm.RDS",
+         reps = 100)
