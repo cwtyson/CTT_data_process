@@ -51,7 +51,7 @@ summarize_nodes <- function(node_data_file = as.character(),
   cat("Saved node summary\n")
   
   ## Depending on plot type:
-  if(plot == "summary"){
+  if(plot_type == "summary"){
     
     ## Make plot from summary
     dets_sum_plot <- ggplot2::ggplot(nodes_sum) +
@@ -65,7 +65,7 @@ summarize_nodes <- function(node_data_file = as.character(),
       ggplot2::theme_minimal()
     
     ## Save
-    suppressMessages(ggsave(here::here(plot_folder, "detections_summary_plot.jpg"),
+    suppressMessages(ggsave(here::here(plot_folder, "node_summary_plot.jpg"),
                             plot = dets_sum_plot))
     
     cat("Finished plotting overall node summary\n")
