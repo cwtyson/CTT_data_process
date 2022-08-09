@@ -3,16 +3,14 @@
 #' @param db_name Name of postgres database
 #' @param db_user User name for postgres database
 #' @param db_password Password for db user 
-#' @param tag_log_file Tag log file (.xlsx). This file has the deployed tags and information about when the tag was deployed, the species, etc.
-#' @param node_log_file Node log file (.xlsx). This file has the times when a node was associated with a grid point.
+#' @param project_name Location of project. This will folder must have a subdirectory 'data/field' with the appropriate field logs.
 #' @param sensor_station_code Code of sensor stations to use. If not specified, all sensor stations will be used. Multiple sensor station codes can be accepted as a vector.
 #' @param tz Time zone. Time zone where the sensor station is located. Should be one of OlsonNames().
-#' @param output_folder Location to save RData file
 
 process_dets <- function(db_name = as.character(),
                          db_user = as.character(),
                          db_password = as.character(),
-                         tag_log_file = as.character(),
+                         project_name = as.character(),
                          sensor_station_code = NULL,
                          node_log_file = as.character(),
                          tz = "UTC",
@@ -67,6 +65,7 @@ process_dets <- function(db_name = as.character(),
   cat("Saved raw detection data\n")
   
   ## Read in tag data, keeping deployed tags and reformating
+  
   tags <- readxl::read_excel(path = tag_log_file) %>%
     dplyr::filter(!is.na(bird_band)) %>%
     dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(date, time),
@@ -85,7 +84,9 @@ process_dets <- function(db_name = as.character(),
     dplyr::select(-deployment_time)
   
   ## Read in node data and reformat
-  node_log <- readxl::read_excel(path = node_log_file) %>%
+  node_log <- readxl::read_excel(path = list.files(here::here("project_name", project_name, "data/field/"),
+                                                   "node_deployment_log",
+                                                   full.names = TRUE)) %>%
     dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(date_on, time_on), "dmy HM", tz = tz),
                   removal_time = lubridate::parse_date_time(paste(date_off, time_off), "dmy HM", tz = tz)) %>%
     dplyr::select(node = node_code,
@@ -118,8 +119,9 @@ process_dets <- function(db_name = as.character(),
   
   ## Save as RData
   saveRDS(dets_f1,
-          file = here::here(output_folder,
-                            "/dets_filtered.Rdata"))
+          file = here::here("project_name",
+                            project_name,
+                            "data/processed/raw/dets_filtered.Rdata"))
 
   cat("Saved filtered detection data\n")
   
