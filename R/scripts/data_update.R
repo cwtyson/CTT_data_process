@@ -1,8 +1,10 @@
 ## Housekeeping
 library(magrittr)
 
+## If necessary, set here to the CTT_data_process folder location and then restart R
+here::set_here(path = "CTT_data_process folder with CTT_data_process.Rproj")
+
 ## Set up profile with personal information
-source(here::here("./R/profile_info.R"))
 
 ## Source functions
 funs <- list.files(here::here("./R/functions"), full.names = TRUE)
@@ -10,14 +12,13 @@ for(fun in funs){
   source(fun)
 }
 
-
 ## Set up new project
-initalize_project(project = "zebby_tracking",
-                  google_drive_folder = "Zebby_tracking_field_data")
+initalize_project(project = "Eswatini",
+                  google_drive_folder = "Eswatini_field_data")
 
 ## Fetch and update field data
-fetch_field_data(project = "zebby_tracking",
-                 google_drive_folder = "Zebby_tracking_field_data",
+fetch_field_data(project = "Eswatini",
+                 google_drive_folder = "Eswatini_field_data",
                  overwrite = TRUE,
                  update = FALSE)
 
@@ -28,28 +29,24 @@ process_dets(db_name = db_name,
              project = "Eswatini",
              sensor_station_code = NULL,
              tz = "Africa/Mbabane")
-# 
+
 ## Process detection data
 process_nodes(db_name = db_name,
               db_user = db_user,
               db_password = db_password,
+              project = "Eswatini",
               sensor_station_code = NULL,
               tz = "Africa/Mbabane")
 
 ## Summarize detections and plot
-summarize_dets(dets_data_file = "./Eswatini/data/processed/dets_filtered.Rdata",
-               plot_type = "summary",
-               interval = "day",
-               summary_folder = "./Eswatini/data_summaries",
-               plot_folder = "./Eswatini/plots")
+summarize_dets(project = "Eswatini",
+               plot_type = "both",
+               interval = "day")
 
 ## Summarize detections and plot
-summarize_nodes(node_data_file = "./Eswatini/data/processed/node_health.Rdata",
-                dets_data_file = "./Eswatini/data/processed/dets_filtered.Rdata",
-                plot_type = "summary",
-                interval = "day",
-                summary_folder = "./Eswatini/data_summaries",
-                plot_folder = "./Eswatini/plots")
+summarize_nodes(project = "Eswatini",
+                plot_type = "both",
+                interval = "day")
 
 ## Prepare detection data to localize
 prepare_dets(processed_dets_file = "./Eswatini/data/processed/dets_filtered.Rdata",
