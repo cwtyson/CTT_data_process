@@ -1,21 +1,19 @@
 #' Make summary table of tag detections
 #'
-#' @param dets_data_file Detection file (either absolute or relative path)
-#' @param plot_type Either "summary", "individual" or "none". Summary will make one plot with a row for each node. Individual will create separate plots for each node
+#' @param project Name of project
+#' @param plot_type Either "summary", "individual", "both", or "none". Summary will make one plot with a row for each node. Individual will create separate plots for each node
 #' @param interval Interval to summarize the data for plotting. Default is one day
-#' @param summary_folder Location to save summary
-#' @param plot_folder Location to save plot
 
-summarize_dets <- function(dets_data_file = as.character(),
-                           plot_type = "summary",
-                           interval = "day",
-                           summary_folder = as.character(),
-                           plot_folder = as.character()){
+summarize_dets <- function(project = as.character(),
+                           plot_type = as.character(),
+                           interval = as.character()){
   
   cat("Starting to summarize detections\n")
   
   ## Read in detections
-  dets <- readRDS(here::here(dets_data_file))
+  dets <- readRDS(here::here("project", 
+                             project,
+                             "data/processed/raw/dets_filtered.Rdata"))
   
   ## Summarize detections
   dets_sum <- dets %>% 
@@ -29,11 +27,15 @@ summarize_dets <- function(dets_data_file = as.character(),
   
   ## Save summary table
   readr::write_csv(dets_sum,
-                   here::here(paste0(summary_folder, "/detection_summary.csv")))
+                   here::here("project", 
+                              project,
+                              "summaries/detection_summary.csv"))
   
   cat("Saved detection summary\n")
   
-  if(plot_type == "summary"){
+  if(plot_type %in% c("summary","both")){
+    
+    cat("Creating overall detection summary plot")
     
     ## Summarize to plot
     dets_sum_2plot <- dets %>% 
@@ -55,19 +57,25 @@ summarize_dets <- function(dets_data_file = as.character(),
       ggplot2::theme_minimal()
     
     ## Save
-    suppressMessages(ggsave(here::here(plot_folder, "detections/detections_summary_plot.jpg"),
+    suppressMessages(ggplot2::ggsave(here::here("project", 
+                                       project,
+                                       "plots/detections/detections_summary_plot.jpg"),
                             plot = dets_sum_plot))
     
     cat("Finished plotting overall detection summary\n")
     
   }
   
-  if(plot_type == "individual"){
+  if(plot_type %in% c("individual","both")){
+    
+    cat("Creating detection summary plots for all tags")
     
     ## Make plot
     for(tag_f in unique(dets$tag)){
       
       # tag_f = unique(dets$tag)[1]
+      
+      cat("Plotting tag: ", tag_f, "\n")
       
       ## Summarize to plot
       dets_sum_2plot <- dets %>% 
@@ -92,16 +100,19 @@ summarize_dets <- function(dets_data_file = as.character(),
         ggplot2::theme_minimal()
       
       ## Save
-      suppressMessages(ggsave(here::here(paste0(plot_folder, "detections/individual/", tag_f, "_detections_plot.jpg")),
+      suppressMessages(ggplot2::ggsave(here::here("project", 
+                                         project,
+                                         "plots/detections/individual/", tag_f, "_detections_plot.jpg"),
                               plot = dets_ind_plot))
-      
-      cat("Finished plotting tag: ", tag_f, "\n")
       
     }
     
+    cat("Finished detection summary plots for all tags")
+    
+    
   }
   
-  if(plot_type == "none"){
+  if(!(plot_type  %in% c("summary", "individual"," both"))){
     
     cat("Not creating summary plots\n")
     
