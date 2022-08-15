@@ -5,12 +5,6 @@ library(magrittr)
 here::set_here(path = "CTT_data_process folder with CTT_data_process.Rproj")
 
 ## Set up profile with personal information
-
-
-usethis::use_git_config(user.name = "cwtyson", user.email = "cwtyson@gmail.com")
-
-credentials::set_github_pat("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")
-
 ## Source functions
 funs <- list.files(here::here("./R/functions"), full.names = TRUE)
 for(fun in funs){
