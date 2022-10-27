@@ -1,18 +1,28 @@
 #' Localize prepared detections. This function takes files from prepare_dets.R.
 #'
-#' @param input_folder Folder of prepared detection data
-#' @param output_folder Folder location to save data 
-#' @param grid_point_file Grid point location file
+#' @param project Project name
 #' @param RSSI_model_file Model of RSSI and distance.
 #' @param reps Number of times to repeat each localization estimate to draw error ellipses
 #' 
 #' 
-localize <- function(input_folder = as.character(),
-                     output_folder = as.character(),
-                     grid_point_file = "./Eswatini/data/field_data/processed_field_data/grid_point_locations.RData",
+localize <- function(project = as.character(),
+                     tags = NULL,
                      RSSI_model_file = "./R/data/RSSI_log_distance_lm.RDS",
-                     reps = 100){
-
+                     reps = 1){
+  
+  cat("Starting to localized detection data\n")
+  
+  ## Set up folders and files based on project
+  input_folder = here::here("project",
+                            project,
+                            "data/processed/detections/prepared/")
+  output_folder = here::here("project",
+                             project,
+                             "data/processed/detections/localized/")
+  grid_point_file =  here::here("project",
+                                project,
+                                "data/processed/field_data/grid_point_locations.RData")
+  
   ## Read in model
   log_dist_RSSI_mdl <- readRDS(RSSI_model_file)
   
@@ -26,7 +36,7 @@ localize <- function(input_folder = as.character(),
     dplyr::distinct(mean_RSSI,.keep_all = T)
   
   
-  ## Grid point locations
+  ## Grid point locations, transformed to lat/lon
   node_pts <- readRDS(grid_point_file) %>%
     sf::st_transform(4326) %>% 
     dplyr::transmute(gp = stringr::str_extract(grid_point, pattern = "^Gp[:digit:]{1,2}"),
@@ -34,14 +44,19 @@ localize <- function(input_folder = as.character(),
                      gp_lat = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
     sf::st_drop_geometry()
   
-  ## Tags prepared 
-  tags_2_localize <- list.files(path = input_folder)
+  ## Tags to process
+  if(is.null(tags)){
+    
+    ## If not specified, then use all tags from input folder
+    tags <- list.files(path = input_folder)
+    
+  }
   
   ## Set progress bar
-  pb <- txtProgressBar(min = 0, max = length(tags_2_localize), style = 3)
+  pb <- txtProgressBar(min = 0, max = length(tags), style = 3)
   
   ## Process each tag that hasn't already been processed  ######
-  for(tag_f in tags_2_localize){
+  for(tag_f in tags){
     
     ## Create directory if needed
     if(!dir.exists(paste0(output_folder, tag_f))){
@@ -49,11 +64,11 @@ localize <- function(input_folder = as.character(),
       dir.create(paste0(output_folder, tag_f))  
     }
     
-    # tag_f <- tags_2_localize[2]
+    # tag_f <- tags[2]
     
     ## Progress bar
     Sys.sleep(0.1)
-    setTxtProgressBar(pb, which(tag_f == tags_2_localize))
+    setTxtProgressBar(pb, which(tag_f == tags))
     
     ## Prepared files
     files_prep <- list.files(path = paste0(input_folder,
@@ -63,10 +78,12 @@ localize <- function(input_folder = as.character(),
     files_localized <- list.files(path = paste0(output_folder,
                                                 tag_f))
     
-    start_time <- Sys.time()
-    
     ## If any files
     if(length(files_prep[!(files_prep %in% files_localized)]) > 0){
+      
+      start_time <- as.character(Sys.time())
+      
+      cat("\n Starting tag:", tag_f, "at", start_time, "\n")
       
       ## Files to localize
       files_2_localize <- paste0(input_folder,
@@ -74,12 +91,10 @@ localize <- function(input_folder = as.character(),
                                  "/",
                                  files_prep[!(files_prep %in% files_localized)])
       
-      cat("\n Starting tag:", tag_f)
-      
-      ## Get all files to process
-      tag_f_files <- list.files(paste0("/Users/tyson/Documents/academia/institutions/WUR/research/eswatini/data/detections/prepared/",
-                                       tag_f),
-                                full.names = T)
+      # ## Get all files to process
+      # tag_f_files <- list.files(paste0(input_folder,
+      #                                  tag_f),
+      #                           full.names = T)
       
       ## Set progress bar
       pb2 <- txtProgressBar(min = 0, max = length(files_2_localize), style = 3)
@@ -92,9 +107,10 @@ localize <- function(input_folder = as.character(),
         ## Get current date
         tag_f_date <- stringi::stri_sub(gsub(".csv","",file),-10)
         
-        cat("\n Starting date:", tag_f_date)
+        start_time_2 <- as.character(Sys.time())
         
-        start_time <- Sys.time()
+        
+        cat("\n Starting date:", tag_f_date, "at", start_time_2, "\n")
         
         ## Progress bar
         Sys.sleep(0.1)
@@ -116,7 +132,7 @@ localize <- function(input_folder = as.character(),
           tidyr::pivot_longer(cols = contains("Gp"),
                               names_to = "gp",
                               values_to = "RSSI") %>% 
-          na.omit() %>% 
+          na.omit() %>%
           dplyr::group_by(dt_r,
                           gp) %>% 
           dplyr::summarise(mean_RSSI = round(mean(RSSI),0),
@@ -130,7 +146,7 @@ localize <- function(input_folder = as.character(),
         dets_p <- dets_p %>% 
           na.omit() %>% 
           dplyr::group_by(dt_r) %>% 
-          dplyr::mutate(n_gp = n()) %>% 
+          dplyr::mutate(n_gp = dplyr::n()) %>% 
           
           ## Remove any periods with fewer than 3 gps
           dplyr::filter(n_gp >= 3) %>%
@@ -144,7 +160,7 @@ localize <- function(input_folder = as.character(),
         ## If any:
         if(nrow(dets_p) > 0){
           
-          cat("\n Intervals to localize:", max(dets_p$t_ind)) 
+          cat("\n Intervals to localize:", max(dets_p$t_ind)*reps) 
           
           ## Empty df
           tag_loc_est <- data.frame()
@@ -274,6 +290,11 @@ localize <- function(input_folder = as.character(),
         
       } 
       
+      
+      ## End progress bar for files
+      close(pb2)
+      
+      
     } else{
       
       cat("\n No new files to localize, skipped tag")
@@ -281,8 +302,6 @@ localize <- function(input_folder = as.character(),
       
     }
     
-    ## End progress bar for files
-    close(pb2)
     
   }
   

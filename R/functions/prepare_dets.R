@@ -4,6 +4,8 @@
 #' The dist_filter argument controls the distance filter that is used to retain nodes around the node with the strongest RSSI value within each window. (Larger values increase the number of nodes retained.)
 #' 
 #' @param processed_dets_file The processed detection file 
+#' @param tags Tags to prepare. If NULL, then any tag with detections will be prepared.
+#' @param project 
 #' @param output_folder The location where the prepared data should go. A new subdirectory called 'prepared_detections' will be created here if necessary as well as subdirectories for each tag.
 #' @param grid_point_file The grid point file with coordinates for each grid point.
 #' @param window The desired window within which to calculate the average tag RSSI.
@@ -11,14 +13,23 @@
 #' @param dist_filter The distance filter (in meters) for retaining nodes around the node with the strongest value in each window.
 
 prepare_dets <- function(processed_dets_file = as.character(),
+                         tags = NULL,
+                         project = as.charcter(),
                          output_folder = as.character(),
                          grid_point_file = as.character(),
                          window = "60 secs",
                          lag = "-30 secs",
                          dist_filter = 200){
   
+  cat("Starting to prepare detection data\n")
+  
   ## Read in processed and filtered detection file
   dets <- readRDS(here::here(processed_dets_file))
+  
+  ## Filter detections to only retain 'official' grid points
+  dets_f <- dets %>% 
+    dplyr::filter(grepl(pattern = "Gp", dets$grid_point)) %>% 
+    dplyr::filter(grid_point != "Gp0")
   
   ## Node data
   grid_points <- readRDS(here::here(grid_point_file))
@@ -29,11 +40,16 @@ prepare_dets <- function(processed_dets_file = as.character(),
     dplyr::mutate(grid_point = as.character(grid_points$grid_point)) %>% 
     dplyr::select(grid_point,
                   x = X,
-                  y = Y)
+                  y = Y) %>% 
+    na.omit()
   
   ## Tags to process
-  tags <- unique(dets$tag)
-
+  if(is.null(tags)){
+    
+    tags <- unique(dets_f$tag)
+    
+  }
+  
   ## Set progress bar
   pb <- txtProgressBar(min = 0, max = length(tags), style = 3)
   
@@ -47,7 +63,7 @@ prepare_dets <- function(processed_dets_file = as.character(),
     setTxtProgressBar(pb, which(tags == tag_f))
     
     ## Subset by tag
-    dets_t <- dets %>% 
+    dets_t <- dets_f %>% 
       dplyr::filter(tag == tag_f) %>% 
       dplyr::mutate(day = lubridate::round_date(date_time, unit = "day")) %>% 
       
@@ -86,7 +102,7 @@ prepare_dets <- function(processed_dets_file = as.character(),
         fdets_prep <- dets_2_prepare %>%
           dplyr::arrange(date_time) %>% 
           dplyr::group_by(grid_point) %>% 
-          dplyr::mutate(dt_r = lubridate::round_date(date_time,
+          dplyr::mutate(dt_r = lubridate::floor_date(date_time,
                                                      unit = lag),
                         mean_RSSI_gp = runner::runner(x = .,
                                                       k = window,
@@ -218,20 +234,20 @@ prepare_dets <- function(processed_dets_file = as.character(),
             dplyr::mutate(date_round = lubridate::round_date(dt_r, unit = "day"))
           
           ## Create directory if needed
-          if(!dir.exists(paste0(output_folder, "/prepared/", tag_f))){
+          if(!dir.exists(paste0(output_folder, tag_f))){
             
-            dir.create(paste0(output_folder, "/prepared/", tag_f))  
+            dir.create(paste0(output_folder, tag_f))  
           }
           
           ## Split based on date round and save
           dt_r_dets_w %>% 
             dplyr::group_by(date_round) %>% 
             dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
-                                              tag_f,
-                                              "/",
-                                              .y$date_round,
-                                              ".csv"),
-                                   row.names = F))
+                                                     tag_f,
+                                                     "/",
+                                                     .y$date_round,
+                                                     ".csv"),
+                                          row.names = F))
           
         }
         

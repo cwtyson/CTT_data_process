@@ -5,8 +5,8 @@
 #' @param interval Interval to summarize the data for plotting. Default is one day
 
 summarize_nodes <- function(project = as.character(),
-                            interval = "day",
-                            plot_type = "both"){
+                            plot_type = "both",
+                            interval = "day"){
   
   cat("Starting to summarize nodes\n")
   
@@ -26,9 +26,10 @@ summarize_nodes <- function(project = as.character(),
     dplyr::group_by(grid_point, date_r) %>% 
     dplyr::summarize(mean_solar_volt = mean(solar_volts, na.rm = T),
                      mean_solar_current = round(mean(solar_current, na.rm = T),0),
-                     mean_battery = round(mean(battery, na.rm = T),0),
-                     mean_rssi = round(mean(node_rssi, na.rm = T),0),
+                     mean_battery = round(mean(battery, na.rm = T),2),
+                     mean_rssi = round(mean(node_rssi, na.rm = T),2),
                      mean_check_in_time = round(mean(as.numeric(difftime(dplyr::lead(date_time), date_time, units = 'min')), na.rm = T),0),
+                     min_date = min(date_r),
                      .groups = "keep") %>% 
     
     ## Summarize detections and join
@@ -50,7 +51,7 @@ summarize_nodes <- function(project = as.character(),
   cat("Saved node summary\n")
   
   ## Depending on plot type:
-  if(plot_type == "summary|both"){
+  if(plot_type %in% c("summary","both")){
     
     ## Make plot from summary
     dets_sum_plot <- ggplot2::ggplot(nodes_sum) +
@@ -73,7 +74,7 @@ summarize_nodes <- function(project = as.character(),
     
   }
   
-  if(plot_type == "individual|both"){
+  if(plot_type %in% c("summary","both")){
     
     cat("Plotting individual node summaries\n")
     
@@ -94,20 +95,76 @@ summarize_nodes <- function(project = as.character(),
                             names_to = "metric",
                             values_to = "value")
       
-      gp_ind_plot <- ggplot2::ggplot(dets_sum_2plot) +
-        ggplot2::geom_point(ggplot2::aes(x = date_r,
-                                         y = value),
-                            color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[80]) +
-        ggplot2::labs(x = NULL,title = gp_f, y = "Value") +
-        ggplot2::facet_grid(metric~., scales = "free") +
-        ggplot2::theme_minimal()
+      ## Plot separately to set axes
+      (volts <- dets_sum_2plot %>% 
+          dplyr::filter(metric == "mean_solar_volt") %>% 
+          ggplot2::ggplot() +
+          ggplot2::geom_point(ggplot2::aes(x = date_r,
+                                           y = value),
+                              color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[90]) +
+          scale_y_continuous(limits = c(0,7)) +
+          ggplot2::labs(x = NULL, y = "Volts") +
+          # ggplot2::facet_grid(metric~., scales = "free") +
+          ggplot2::theme_minimal())
       
-      ## Save
+      (current <- dets_sum_2plot %>% 
+          dplyr::filter(metric == "mean_solar_current") %>% 
+          ggplot2::ggplot() +
+          ggplot2::geom_point(ggplot2::aes(x = date_r,
+                                           y = value),
+                              color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[80]) +
+          scale_y_continuous(limits = c(0,160)) +
+          ggplot2::labs(x = NULL, y = "Current") +
+          # ggplot2::facet_grid(metric~., scales = "free") +
+          ggplot2::theme_minimal())
+      
+      (battery <- dets_sum_2plot %>% 
+          dplyr::filter(metric == "mean_battery") %>% 
+          ggplot2::ggplot() +
+          ggplot2::geom_point(ggplot2::aes(x = date_r,
+                                           y = value),
+                              color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[70]) +
+          scale_y_continuous(limits = c(3,4.5)) +
+          ggplot2::labs(x = NULL, y = "Battery") +
+          # ggplot2::facet_grid(metric~., scales = "free") +
+          ggplot2::theme_minimal())
+      
+      
+      (rssi <- dets_sum_2plot %>% 
+          dplyr::filter(metric == "mean_rssi") %>% 
+          ggplot2::ggplot() +
+          ggplot2::geom_point(ggplot2::aes(x = date_r,
+                                           y = value),
+                              color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[70]) +
+          scale_y_continuous(limits = c(-110,-40)) +
+          ggplot2::labs(x = NULL, y = "RSSI") +
+          # ggplot2::facet_grid(metric~., scales = "free") +
+          ggplot2::theme_minimal())
+      
+      (dets <- dets_sum_2plot %>% 
+          dplyr::filter(metric == "dets") %>% 
+          ggplot2::ggplot() +
+          ggplot2::geom_point(ggplot2::aes(x = date_r,
+                                           y = value),
+                              color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[60]) +
+          
+          ggplot2::stat_smooth(ggplot2::aes(x = date_r,
+                                            y = value),
+                               se = FALSE,
+                               color = grey(0.4),
+                               color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[60]) +
+          ggplot2::labs(x = NULL, y = "Detections") +
+          scale_y_continuous(limits = c(0,1000)) +
+          # ggplot2::facet_grid(metric~., scales = "free") +
+          ggplot2::theme_minimal())
+      
+      gp_ind_plot <- cowplot::plot_grid(volts, current, battery, rssi, dets, nrow = 5)
+      
       suppressMessages(ggplot2::ggsave(here::here("project",
                                                   project,
-                                                  "plots/nodes/individual/", 
+                                                  paste0("plots/nodes/individual/", 
                                                   gp_f, 
-                                                  "_health_plot.jpg"),
+                                                  "_health_plot.jpg")),
                                        plot = gp_ind_plot))
       
     }

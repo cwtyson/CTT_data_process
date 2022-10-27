@@ -35,7 +35,7 @@ summarize_dets <- function(project = as.character(),
   
   if(plot_type %in% c("summary","both")){
     
-    cat("Creating overall detection summary plot")
+    cat("Creating overall detection summary plot\n")
     
     ## Summarize to plot
     dets_sum_2plot <- dets %>% 
@@ -68,7 +68,7 @@ summarize_dets <- function(project = as.character(),
   
   if(plot_type %in% c("individual","both")){
     
-    cat("Creating detection summary plots for all tags")
+    cat("Creating detection summary plots for all tags\n")
     
     ## Make plot
     for(tag_f in unique(dets$tag)){
@@ -102,12 +102,12 @@ summarize_dets <- function(project = as.character(),
       ## Save
       suppressMessages(ggplot2::ggsave(here::here("project", 
                                          project,
-                                         "plots/detections/individual/", tag_f, "_detections_plot.jpg"),
+                                         "plots/detections/individual", 
+                                         paste0(tag_f, "_detections_plot.jpg")),
                               plot = dets_ind_plot))
-      
     }
     
-    cat("Finished detection summary plots for all tags")
+    cat("Finished detection summary plots for all tags\n")
     
     
   }

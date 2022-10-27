@@ -3,26 +3,25 @@
 #' @param db_name Name of postgres database
 #' @param db_user User name for postgres database
 #' @param db_password Password for db user 
-#' @param project_name Location of project. This will folder must have a subdirectory 'data/field' with the appropriate field logs.
+#' @param project Location of project. This will folder must have a subdirectory 'data/field' with the appropriate field logs.
 #' @param sensor_station_code Code of sensor stations to use. If not specified, all sensor stations will be used. Multiple sensor station codes can be accepted as a vector.
 #' @param tz Time zone. Time zone where the sensor station is located. Should be one of OlsonNames().
 
 process_dets <- function(db_name = as.character(),
                          db_user = as.character(),
                          db_password = as.character(),
-                         project_name = as.character(),
+                         project = as.character(),
                          sensor_station_code = NULL,
                          node_log_file = as.character(),
-                         tz = "UTC",
-                         output_folder = as.character()){
+                         tz = "UTC"){
   
   cat("Starting to process detection data\n")
   
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
-                            dbname = db_name,
-                            user = db_user,
-                            password = db_password) 
+                         dbname = db_name,
+                         user = db_user,
+                         password = db_password) 
   
   ## Station id is null, use all
   if(is.null(sensor_station_code)){
@@ -39,12 +38,12 @@ process_dets <- function(db_name = as.character(),
     
     ## Keep only station ids matching the specified filter
     dplyr::filter(station_id %in% sensor_station_code) %>% 
-    dplyr::collect() %>% 
     dplyr::distinct(tag_id,
                     node_id,
                     time,
-                    .keep_all = T) 
-  
+                    .keep_all = T) %>% 
+    dplyr::collect()
+    
   ## Process
   dets_p <- dets_r %>%
     
@@ -59,20 +58,21 @@ process_dets <- function(db_name = as.character(),
   
   ## Save as RData
   saveRDS(dets_p,
-          file = here::here(output_folder,
-                            "/dets_all.Rdata"))
+          file = here::here("project",
+                            project,
+                            "data/processed/raw/dets_all.Rdata"))
   
   cat("Saved raw detection data\n")
   
   ## Read in tag data, keeping deployed tags and reformating
-  
-  tags <- readxl::read_excel(path = tag_log_file) %>%
+  tags <- readxl::read_excel(path = here::here("project", project, "data/field/tags/tag_log.xlsx")) %>%
     dplyr::filter(!is.na(bird_band)) %>%
     dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(date, time),
                                                                orders = "%d-%m-%Y %H:%M",
                                                                tz = tz)) %>%
     dplyr::select(tag,
-                  deployment_time)
+                  deployment_time) %>% 
+    dplyr::filter(tag != "removed")
   
   ## Filter out detections from before the tag was deployed
   dets_f <- dets_p %>%
@@ -83,16 +83,29 @@ process_dets <- function(db_name = as.character(),
     na.omit() %>%
     dplyr::select(-deployment_time)
   
+  ## Read in node codes
+  node_codes <- readxl::read_excel(path = here::here("project", project, "data/field/nodes/node_codes.xlsx"))
+  
+  ## Read in node log and reformat
+  node_log_mr <- sort(list.files(here::here("project", project, "data/field/nodes/"),
+                                 full.names = TRUE,
+                                 pattern = "node_deployment_log"),
+                      decreasing = TRUE)[1]
+  
+  
   ## Read in node data and reformat
-  node_log <- readxl::read_excel(path = list.files(here::here("project_name", project_name, "data/field/"),
-                                                   "node_deployment_log",
-                                                   full.names = TRUE)) %>%
-    dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(date_on, time_on), "dmy HM", tz = tz),
-                  removal_time = lubridate::parse_date_time(paste(date_off, time_off), "dmy HM", tz = tz)) %>%
-    dplyr::select(node = node_code,
-                  grid_point,
-                  date_time = deployment_time,
-                  removal_time)
+  node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
+                                 dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
+                                               removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
+                                 
+                                 ## Join node node
+                                 dplyr::left_join(node_codes,
+                                                  by  = "node_number") %>% 
+                                 
+                                 dplyr::select(node,
+                                               grid_point,
+                                               date_time = deployment_time,
+                                               removal_time))
   
   ## Convert to data.table
   nodes <- data.table::data.table(node_log, key = c("node", "date_time"))
@@ -119,10 +132,10 @@ process_dets <- function(db_name = as.character(),
   
   ## Save as RData
   saveRDS(dets_f1,
-          file = here::here("project_name",
-                            project_name,
+          file = here::here("project",
+                            project,
                             "data/processed/raw/dets_filtered.Rdata"))
-
+  
   cat("Saved filtered detection data\n")
   
 }

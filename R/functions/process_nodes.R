@@ -10,7 +10,7 @@
 process_nodes <- function(db_name = as.character(),
                           db_user = as.character(),
                           db_password = as.character(),
-                          project_name = as.character(),
+                          project = as.character(),
                           sensor_station_code = NULL,
                           tz = NULL){
   
@@ -41,7 +41,8 @@ process_nodes <- function(db_name = as.character(),
     
     ## Select (and rename) relevant columns
     dplyr::transmute(node = toupper(node_id),
-                     date_time = lubridate::with_tz(time, tz = tz),
+                     date_time = lubridate::with_tz(time, 
+                                                    tz = tz),
                      node_rssi = node_rssi,
                      battery,
                      lat = latitude,
@@ -53,13 +54,24 @@ process_nodes <- function(db_name = as.character(),
     dplyr::arrange(node,
                    date_time)
   
+  ## Read in node codes
+  node_codes <- readxl::read_excel(path = here::here("project", project, "data/field/nodes/node_codes.xlsx")) 
+  
   ## Read in node log and reformat
-  node_log <- suppressWarnings(readxl::read_excel(path = list.files(here::here("project_name", project_name, "data/field/"),
-                                                                    "node_deployment_log",
-                                                                    full.names = TRUE)) %>%
-                                 dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(date_on, time_on), "dmy HM", tz = tz),
-                                               removal_time = lubridate::parse_date_time(paste(date_off, time_off), "dmy HM"), tz = tz) %>%
-                                 dplyr::select(node = node_code,
+  node_log_mr <- sort(list.files(here::here("project", project, "data/field/nodes"),
+                           full.names = TRUE,
+                           pattern = "node_deployment_log"),
+                      decreasing = TRUE)[1]
+  
+  
+  node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
+                                 dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
+                                               removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
+                                 ## Join node node
+                                 dplyr::left_join(node_codes,
+                                                  by  = "node_number") %>% 
+                                 
+                                 dplyr::select(node,
                                                grid_point,
                                                date_time = deployment_time,
                                                removal_time))
@@ -91,8 +103,8 @@ process_nodes <- function(db_name = as.character(),
   
   ## Save as RData
   saveRDS(nodes_db_p,
-          file = here::here("project_name",
-                            project_name,
+          file = here::here("project",
+                            project,
                             "data/processed/raw/node_health.Rdata"))
   
   cat("Saved updated node data\n")

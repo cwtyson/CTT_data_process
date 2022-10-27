@@ -5,8 +5,8 @@
 #' @param projected_crs Projected CRS to use
 
 process_grid_points <- function(grid_point_file = as.character(),
-                             output_folder = as.character(),
-                             projected_crs = 22291){
+                                project = as.character(),
+                                projected_crs = 22291){
   
   grid_pts <- readr::read_delim(grid_point_file,
                                 delim = ";",
@@ -17,7 +17,8 @@ process_grid_points <- function(grid_point_file = as.character(),
     sf::st_set_crs(4326) %>% 
     sf::st_transform(projected_crs)
   
-  saveRDS(grid_pts, paste0(output_folder,"processed_grid_point_locations.RData"))
-  
-  
+  saveRDS(grid_pts, here::here("project/",
+                               project,
+                               "data/processed/field_data/grid_point_locations.RData"))
+
 }
