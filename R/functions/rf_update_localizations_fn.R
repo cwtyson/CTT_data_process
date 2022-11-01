@@ -1,30 +1,30 @@
-## Update localizations
-
-update_localization <- function(tag_f = as.character(),
-                                db_name = as.character(),
-                                db_user = as.character(),
-                                db_password = as.character(),
-                                project = as.character(),
-                                tag_folder = as.character(),
-                                node_folder = as.character(),
-                                output_folder = as.character(),
-                                tz = "UTC"){
+## Update localizations using range-free method
+rf_update_localization <- function(tag_f = as.character(),
+                                   db_name = as.character(),
+                                   db_user = as.character(),
+                                   db_password = as.character(),
+                                   project = as.character(),
+                                   tag_folder = as.character(),
+                                   node_folder = as.character(),
+                                   output_folder = as.character(),
+                                   tz = "UTC"){
   
   cat("\n Starting to get new data for tag:", tag_f, "\n")
   
+
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
                          dbname = db_name,
-                         password = db_password) 
+                         password = db_password)
   
   ## Get most recent date file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detections/prepared/w_error/60s/",tag_f,"/"),full.names = TRUE))[1]
+  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detections/rf/prepared/w_error/60s/",tag_f,"/"),full.names = TRUE))[1]
   
   ## Get date time to filter by 
   if(length(mrdf)==1){
     mrd <- suppressWarnings(read_csv(mrdf,show_col_types = FALSE) %>% 
-      pull(dt_r) %>% 
-      max())
+                              pull(dt_r) %>% 
+                              max())
     mrd <- lubridate::with_tz(mrd, tz = tz)
   } else{
     mrd <- as.Date("2021-08-01")
@@ -49,23 +49,29 @@ update_localization <- function(tag_f = as.character(),
   node_codes <- readxl::read_excel(paste0(node_folder,"node_codes.xlsx")) %>% 
     dplyr::mutate(node_number = as.character(node_number))
   
-  ## Read in node log and reformat
+  node_codes <- readxl::read_excel("/Users/tyson/Documents/academia/institutions/WUR/research/australia/zebby_tracking/data/field_data/logs/node_master_list.xlsx") %>% 
+    dplyr::mutate(node_number = as.character(node_number))
+                                   
+  
+  ## Get most recent node log
   node_log_mr <- sort(list.files(paste0(node_folder),
                                  full.names = TRUE,
                                  pattern = "node_deployment_log"),
                       decreasing = TRUE)[1]
   
+  ## Read in node log and reformat
   node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
                                  dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
                                                removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
                                  ## Join node node
                                  dplyr::left_join(node_codes,
                                                   by  = "node_number") %>% 
-                                 
+                                 dplyr::filter(!grepl("d",grid_point)) %>% 
                                  dplyr::select(node,
                                                grid_point,
                                                date_time = deployment_time,
                                                removal_time))
+  
   ## Convert to data.table
   nodes <- data.table::data.table(node_log, key = c("node", "date_time"))
   dets_f <- data.table::data.table(dets_f, key = c("node", "date_time"))

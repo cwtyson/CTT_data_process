@@ -12,36 +12,20 @@
 #' @param lag The increment over which to calculate the moving window given as a negative value, e.g. '-30 seconds'.
 #' @param dist_filter The distance filter (in meters) for retaining nodes around the node with the strongest value in each window.
 
-prepare_dets <- function(processed_dets_file = as.character(),
-                         tags = NULL,
-                         project = as.charcter(),
-                         output_folder = as.character(),
-                         grid_point_file = as.character(),
-                         window = "60 secs",
-                         lag = "-30 secs",
-                         dist_filter = 200){
+ml_prepare_dets_error_fn <- function(tag_f, 
+                                     dets_t, 
+                                     grid_points,
+                                     output_folder, tz,
+                                     tags = NULL,
+                                     project = as.character(),
+                                     output_folder = as.character(),
+                                     grid_point_file = as.character(),
+                                     window = "60 secs",
+                                     lag = "-30 secs",
+                                     dist_filter = 200){
   
   cat("Starting to prepare detection data\n")
   
-  ## Read in processed and filtered detection file
-  dets <- readRDS(here::here(processed_dets_file))
-  
-  ## Filter detections to only retain 'official' grid points
-  dets_f <- dets %>% 
-    dplyr::filter(grepl(pattern = "Gp", dets$grid_point)) %>% 
-    dplyr::filter(grid_point != "Gp0")
-  
-  ## Node data
-  grid_points <- readRDS(here::here(grid_point_file))
-  
-  grid_points_df <- grid_points %>% 
-    sf::st_coordinates() %>% 
-    as.data.frame() %>% 
-    dplyr::mutate(grid_point = as.character(grid_points$grid_point)) %>% 
-    dplyr::select(grid_point,
-                  x = X,
-                  y = Y) %>% 
-    na.omit()
   
   ## Get unique days 
   days <- as.character(unique(dets_t$date))
@@ -60,44 +44,19 @@ prepare_dets <- function(processed_dets_file = as.character(),
       Sys.sleep(0.1)
       setTxtProgressBar(pb, which(days == day_f))
       
-      # day_f = days[26]
+      # day_f = days[1]
       
       day_f_f <- as.Date(day_f, tz = tz)
       
       dets_2_prepare <- dets_t %>% 
-        filter(date == day_f_f)
+        dplyr::filter(date == day_f_f)
       
       ## If any to prepare
       if(nrow(dets_2_prepare) > 0){
         
-        cat("\n Tag:", tag_f, "- day:", day_f, nrow(dets_2_prepare), "detections to prepare \n")
-        
-    
-    ## Get days that have already been prepared for the tag
-    prepared_files <- gsub(x = list.files(paste0(output_folder,
-                                                 tag_f),
-                                          pattern = ".csv"),
-                           pattern = ".csv",
-                           replacement = "")
-    
-    
-    ## Days to prepare
-    days_2_prepare <- days[!(days %in% prepared_files)]
-    
-    ## Files that still need to be processed
-    if(length(days_2_prepare) > 0){
-      
-      ## Keep days to prepare
-      dets_2_prepare <- dets_t %>% 
-        dplyr::filter(day %in% days_2_prepare)
-      
-      cat("\n Days to prepare:", length(days_2_prepare), "\n")
-      
-      ## If any to prepare
-      if(nrow(dets_2_prepare) > 0){
-        
-        cat("\n Records:", nrow(dets_2_prepare), "\n")
-        
+        cat("\n Tag:", tag_f, "- day:", day_f, "- detections to prepare:", nrow(dets_2_prepare), "\n")
+  
+  
         ## Prepare filtered records
         fdets_prep <- dets_2_prepare %>%
           dplyr::arrange(date_time) %>% 
