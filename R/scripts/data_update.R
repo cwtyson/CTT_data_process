@@ -6,10 +6,12 @@ color_pal = wesanderson::wes_palette("Zissou1", 100, type = "continuous")
 
 ## Set up profile with personal information
 ## Source functions
+
 funs <- list.files(here::here("./R/functions"), full.names = TRUE)
 for(fun in funs){
   source(fun)
 }
+
 profile_info <- source("./R/profile_info.R")
 
 # data_update <- function(update_type = c("update_field_data",
