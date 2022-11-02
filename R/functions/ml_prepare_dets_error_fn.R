@@ -19,10 +19,9 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                      tags = NULL,
                                      project = as.character(),
                                      output_folder = as.character(),
-                                     grid_point_file = as.character(),
-                                     window = "60 secs",
-                                     lag = "-30 secs",
-                                     dist_filter = 200){
+                                     window = "30 secs",
+                                     lag = "-15 secs",
+                                     dist_filter = 300){
   
   cat("Starting to prepare detection data\n")
   
@@ -55,8 +54,8 @@ ml_prepare_dets_error_fn <- function(tag_f,
       if(nrow(dets_2_prepare) > 0){
         
         cat("\n Tag:", tag_f, "- day:", day_f, "- detections to prepare:", nrow(dets_2_prepare), "\n")
-  
-  
+        
+        
         ## Prepare filtered records
         fdets_prep <- dets_2_prepare %>%
           dplyr::arrange(date_time) %>% 
@@ -67,8 +66,8 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                                       k = window,
                                                       lag = lag,
                                                       idx = "date_time",
-                                                      f = function(x) round(mean(x$rssi),0),
-                                                      na_pad = TRUE)) %>% 
+                                                      f = function(x) mean(x$rssi),
+                                                      na_pad = FALSE)) %>% 
           dplyr::ungroup() %>% 
           dplyr::select(tag,
                         grid_point,
@@ -89,16 +88,13 @@ ml_prepare_dets_error_fn <- function(tag_f,
           dplyr::distinct(grid_point,
                           dt_r,
                           .keep_all = T) %>% 
-          dplyr::select(tag,
-                        grid_point,
-                        dt_r,
-                        mean_RSSI_gp,
-                        dets,
-                        n_gp) %>% 
           
           ## Create time index
           dplyr::ungroup() %>%
-          dplyr::mutate(t_ind = cumsum(!duplicated(dt_r)))
+          dplyr::mutate(t_ind = cumsum(!duplicated(dt_r))) %>% 
+          
+          ## Rearrange
+          dplyr::select(tag, dt_r, t_ind, grid_point, mean_RSSI_gp,dets,n_gp)
         
         ## Grid point with max RSSI for each window
         gp_max_RSSI <- fdets_prep_sum %>% 
@@ -132,10 +128,10 @@ ml_prepare_dets_error_fn <- function(tag_f,
             unique() 
           
           ## If possible:
-          if( length(interval_gps) > 0 ){
+          if( length(interval_gps) >= 3  ){
             
             ## Filter node pts based on those with detections
-            grid_points_df_f <- grid_points_df %>% 
+            grid_points_df_f <- grid_points %>% 
               dplyr::filter(grid_point %in% interval_gps) 
             
             ## Get distance between nodes with detections during the point
@@ -190,22 +186,23 @@ ml_prepare_dets_error_fn <- function(tag_f,
             tidyr::pivot_wider(names_from = "grid_point",
                                values_from  = "mean_RSSI_gp") %>% 
             dplyr::arrange(dt_r) %>% 
-            dplyr::mutate(date_round = lubridate::round_date(dt_r, unit = "day"))
+            dplyr::mutate(date_round = lubridate::floor_date(dt_r, unit = "day"))
           
           ## Create directory if needed
-          if(!dir.exists(paste0(output_folder, tag_f))){
+          if(!dir.exists(paste0(output_folder, "/ml_prepared/w_error/15s/", tag_f))){
             
-            dir.create(paste0(output_folder, tag_f))  
+            dir.create(paste0(output_folder, "/ml_prepared/w_error/15s/", tag_f))  
           }
           
-          ## Split based on date round and save
+          ## Split based on date round and save (not neecessary, but keeping for now)
           dt_r_dets_w %>% 
             dplyr::group_by(date_round) %>% 
             dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
+                                                     "/ml_prepared/w_error/15s/",
                                                      tag_f,
                                                      "/",
                                                      .y$date_round,
-                                                     ".csv"),
+                                                     ".csv.gz"),
                                           row.names = F))
           
         }

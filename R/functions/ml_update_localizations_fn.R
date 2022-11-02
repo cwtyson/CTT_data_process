@@ -11,16 +11,27 @@ update_localization_rf <- function(tag_f = as.character(),
   
   cat("\n Starting to get new data for tag:", tag_f, "\n")
   
+  db_name = "tyson"
+  db_user = "tyson"
+  db_password = "time00"
+  project = "zebby_tracking"
+  tag_f = "1E4C4C4C"
+  node_folder = "/Users/tyson/Documents/academia/research/zebby_tracking/data/field/nodes/"
+  tag_folder = "/Users/tyson/Documents/academia/research/zebby_tracking/data/field/tag/"
+  output_folder =  "/Users/tyson/Documents/academia/research/zebby_tracking/data/processed_detections/ml/"
+  tz = "Australia/Broken_Hill"
+  
+  
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
                          dbname = db_name,
                          password = db_password)
   
   ## Get most recent date file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detections/prepared/w_error/60s/",tag_f,"/"),full.names = TRUE))[1]
+  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detection/sml/ml_prepared/w_error/30s/",tag_f,"/"),full.names = TRUE))[1]
   
   ## Get date time to filter by 
-  if(length(mrdf)==1){
+  if(!is.na(mrdf)){
     mrd <- suppressWarnings(readr::read_csv(mrdf,show_col_types = FALSE) %>% 
                               dplyr::pull(dt_r) %>% 
                               max())
@@ -93,10 +104,9 @@ update_localization_rf <- function(tag_f = as.character(),
     dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day")) 
   
   ## Get grid point coordinates
-  # grid_points <- sf::read_sf(paste0(node_folder, "coordinates.KML"))
-  grid_points <- suppressWarnings(sf::read_sf("/Users/tyson/Documents/academia/institutions/WUR/research/australia/zebby_tracking/data/field_data/spatial_data/grid_points_20221101.GPX") %>% 
+  grid_points <- suppressWarnings(sf::read_sf(paste0(node_folder, "grid_point_coordinates.GPX")) %>% 
                                     sf::st_transform(3308) %>% 
-                                    dplyr::transmute(name = gsub("Gp ", "", name),
+                                    dplyr::transmute(grid_point = gsub("Gp ", "", name),
                                                      x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
                                                      y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                     sf::st_drop_geometry())
