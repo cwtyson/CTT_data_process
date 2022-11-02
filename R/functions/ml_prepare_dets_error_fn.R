@@ -15,23 +15,20 @@
 ml_prepare_dets_error_fn <- function(tag_f, 
                                      dets_t, 
                                      grid_points,
-                                     output_folder, tz,
+                                     output_folder, 
+                                     tz,
                                      tags = NULL,
                                      project = as.character(),
-                                     output_folder = as.character(),
                                      window = "30 secs",
                                      lag = "-15 secs",
                                      dist_filter = 300){
   
-  cat("Starting to prepare detection data\n")
-  
-  
   ## Get unique days 
   days <- as.character(unique(dets_t$date))
   
-  ## Set progress bar for preparing tags
-  pb <- txtProgressBar(min = 0, max = length(days), style = 3)
-  
+  # ## Set progress bar for preparing tags
+  # pb <- txtProgressBar(min = 0, max = length(days), style = 3)
+  # 
   ## Files that still need to be processed
   if(length(days) > 0){
     
@@ -39,10 +36,10 @@ ml_prepare_dets_error_fn <- function(tag_f,
     
     for(day_f in days){
       
-      ## Progress bar
-      Sys.sleep(0.1)
-      setTxtProgressBar(pb, which(days == day_f))
-      
+      # ## Progress bar
+      # Sys.sleep(0.1)
+      # setTxtProgressBar(pb, which(days == day_f))
+      # 
       # day_f = days[1]
       
       day_f_f <- as.Date(day_f, tz = tz)
@@ -54,7 +51,6 @@ ml_prepare_dets_error_fn <- function(tag_f,
       if(nrow(dets_2_prepare) > 0){
         
         cat("\n Tag:", tag_f, "- day:", day_f, "- detections to prepare:", nrow(dets_2_prepare), "\n")
-        
         
         ## Prepare filtered records
         fdets_prep <- dets_2_prepare %>%
@@ -108,12 +104,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
         
         ## Empty data frame
         dt_r_dets_all <- data.frame()
-        
-        ## Set progress bar
-        pb2 <- txtProgressBar(min = 0, max = length(unique(gp_max_RSSI$t_ind)), style = 3)
-        
-        cat("\n Windows:", length(unique(gp_max_RSSI$t_ind)), "\n")
-        
+       
         ## For each interval
         for(interval in unique(gp_max_RSSI$t_ind)){
           
@@ -149,7 +140,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
           ## Keep nodes within specified distance filter
           nodes_dist_f <- n_dist_df %>%
             dplyr::filter(gp == gp_max_RSSI[gp_max_RSSI$t_ind == interval,]$grid_point) %>% 
-            tidyr::gather(key = "gp", 
+            tidyr::gather(key = "gp_", 
                           value = "distance") %>%
             dplyr::filter(distance <= dist_filter) 
           
@@ -170,9 +161,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
           
         }
         
-        ## End progress bar
-        close(pb2)
-        
+
         ## If any to process, make wide:
         if(nrow(dt_r_dets_all)>0){
           
@@ -218,7 +207,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
       }
     }
   }
-  ## End progress bar
-  close(pb)
-  
+  # ## End progress bar
+  # close(pb)
+  # 
 }

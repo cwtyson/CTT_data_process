@@ -1,26 +1,16 @@
 ## Update localizations using multilateration
-update_localization_rf <- function(tag_f = as.character(),
-                                   db_name = as.character(),
-                                   db_user = as.character(),
-                                   db_password = as.character(),
-                                   project = as.character(),
-                                   tag_folder = as.character(),
-                                   node_folder = as.character(),
-                                   output_folder = as.character(),
-                                   tz = "UTC"){
+ml_update_localizations_fn <- function(tag_f = as.character(),
+                                       db_name = as.character(),
+                                       db_user = as.character(),
+                                       db_password = as.character(),
+                                       project = as.character(),
+                                       tag_folder = as.character(),
+                                       node_folder = as.character(),
+                                       output_folder = as.character(),
+                                       log_dist_RSSI_mdl = as.character(),
+                                       tz = "UTC"){
   
   cat("\n Starting to get new data for tag:", tag_f, "\n")
-  
-  db_name = "tyson"
-  db_user = "tyson"
-  db_password = "time00"
-  project = "zebby_tracking"
-  tag_f = "1E4C4C4C"
-  node_folder = "/Users/tyson/Documents/academia/research/zebby_tracking/data/field/nodes/"
-  tag_folder = "/Users/tyson/Documents/academia/research/zebby_tracking/data/field/tag/"
-  output_folder =  "/Users/tyson/Documents/academia/research/zebby_tracking/data/processed_detections/ml/"
-  tz = "Australia/Broken_Hill"
-  
   
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
@@ -101,12 +91,13 @@ update_localization_rf <- function(tag_f = as.character(),
   
   ## Add day column
   dets_t <- dets_f1 %>% 
-    dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day")) 
+    dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day"),
+                  grid_point = paste0("gp_", grid_point)) 
   
   ## Get grid point coordinates
   grid_points <- suppressWarnings(sf::read_sf(paste0(node_folder, "grid_point_coordinates.GPX")) %>% 
                                     sf::st_transform(3308) %>% 
-                                    dplyr::transmute(grid_point = gsub("Gp ", "", name),
+                                    dplyr::transmute(grid_point = gsub("Gp ", "gp_", name),
                                                      x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
                                                      y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                     sf::st_drop_geometry())
@@ -124,6 +115,7 @@ update_localization_rf <- function(tag_f = as.character(),
   ## Then localize
   ml_localizing_fn(tag_f = tag_f,
                    output_folder = output_folder,
+                   log_dist_RSSI_mdl = log_dist_RSSI_mdl,
                    tz = tz)
   
 }
