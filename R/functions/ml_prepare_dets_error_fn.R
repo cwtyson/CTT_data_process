@@ -50,7 +50,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
       ## If any to prepare
       if(nrow(dets_2_prepare) > 0){
         
-        cat("\n Tag:", tag_f, "- day:", day_f, "- detections to prepare:", nrow(dets_2_prepare), "\n")
+        cat("\n Starting tag:", tag_f, "- day:", day_f, "- detections to prepare:", nrow(dets_2_prepare), "\n")
         
         ## Prepare filtered records
         fdets_prep <- dets_2_prepare %>%
@@ -108,10 +108,10 @@ ml_prepare_dets_error_fn <- function(tag_f,
         ## For each interval
         for(interval in unique(gp_max_RSSI$t_ind)){
           
-          ## Progress bar
-          Sys.sleep(0.1)
-          setTxtProgressBar(pb2, which(unique(gp_max_RSSI$t_ind) == interval))
-          
+          # ## Progress bar
+          # Sys.sleep(0.1)
+          # setTxtProgressBar(pb2, which(unique(gp_max_RSSI$t_ind) == interval))
+          # 
           ## Get grid_points with detections during the interval
           interval_gps <- fdets_prep_sum %>% 
             dplyr::filter(t_ind == interval) %>%
@@ -197,12 +197,11 @@ ml_prepare_dets_error_fn <- function(tag_f,
         }
         
         
-        cat("\n Finished:", tag_f, "\n")
-        
+        cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
         
       } else{
         
-        cat("\n No records, finished:", tag_f, "\n")
+        cat("\n No records, skipped:", tag_f, "- day:", day_f,"\n")
         
       }
     }

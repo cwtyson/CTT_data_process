@@ -1,5 +1,6 @@
 ml_localizing_fn <- function(tag_f,
                              output_folder,
+                             grid_points,
                              log_dist_RSSI_mdl,
                              tz = tz){
   
@@ -105,18 +106,18 @@ ml_localizing_fn <- function(tag_f,
         ## Empty df
         tag_loc_est <- data.frame()
         
-        ## Set progress bar
-        pb_ints <- txtProgressBar(min = 0, max = 100, style = 3)
-        
+        # ## Set progress bar
+        # pb_ints <- txtProgressBar(min = 0, max = 100, style = 3)
+        # 
         ## For each interval
         for(int in unique(dets_p$t_ind)){
           
           # int = unique(dets_p$t_ind)[10]
           
-          ## Progress bar
-          Sys.sleep(0.1)
-          setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
-          
+          # ## Progress bar
+          # Sys.sleep(0.1)
+          # setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
+          # 
           tryCatch(
             expr = {
               
@@ -159,7 +160,7 @@ ml_localizing_fn <- function(tag_f,
                   data.frame() %>%
                   sf::st_as_sf(coords = c("x", "y")) %>%
                   sf::st_set_crs(4326) %>%
-                  sf::st_transform(22291) %>%
+                  sf::st_transform(3308) %>%
                   dplyr::transmute(x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
                                    y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>%
                   sf::st_drop_geometry()
@@ -221,7 +222,7 @@ ml_localizing_fn <- function(tag_f,
             
           )
 
-          close(pb_ints)
+          # close(pb_ints)
                     
         }
         
@@ -256,4 +257,3 @@ ml_localizing_fn <- function(tag_f,
   close(pb2)
   
 }
-

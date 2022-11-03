@@ -18,7 +18,7 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
                          password = db_password)
   
   ## Get most recent date file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detection/sml/ml_prepared/w_error/30s/",tag_f,"/"),full.names = TRUE))[1]
+  mrdf <- rev(list.files(paste0(output_folder,"ml_prepared/w_error/15s/",tag_f,""),full.names = TRUE))[1]
   
   ## Get date time to filter by 
   if(!is.na(mrdf)){
@@ -115,6 +115,7 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
   ## Then localize
   ml_localizing_fn(tag_f = tag_f,
                    output_folder = output_folder,
+                   grid_points = grid_points,
                    log_dist_RSSI_mdl = log_dist_RSSI_mdl,
                    tz = tz)
   
