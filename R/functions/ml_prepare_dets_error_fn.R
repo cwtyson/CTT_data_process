@@ -17,7 +17,6 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                      grid_points,
                                      output_folder, 
                                      tz,
-                                     tags = NULL,
                                      project = as.character(),
                                      window = "30 secs",
                                      lag = "-15 secs",
@@ -32,7 +31,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
   ## Files that still need to be processed
   if(length(days) > 0){
     
-    cat("\n Tag:", tag_f, "- days to prepare:", length(days), "\n")
+    cat("\n Starting tag:", tag_f, "- days to prepare:", length(days), "\n")
     
     for(day_f in days){
       
@@ -50,7 +49,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
       ## If any to prepare
       if(nrow(dets_2_prepare) > 0){
         
-        cat("\n Starting tag:", tag_f, "- day:", day_f, "- detections to prepare:", nrow(dets_2_prepare), "\n")
+        cat("\n Starting to prepare tag:", tag_f, "- day:", day_f, "- detections:", nrow(dets_2_prepare), "\n")
         
         ## Prepare filtered records
         fdets_prep <- dets_2_prepare %>%
@@ -104,7 +103,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
         
         ## Empty data frame
         dt_r_dets_all <- data.frame()
-       
+        
         ## For each interval
         for(interval in unique(gp_max_RSSI$t_ind)){
           
@@ -135,33 +134,33 @@ ml_prepare_dets_error_fn <- function(tag_f,
             n_dist_df <- data.frame(n_dist)
             colnames(n_dist_df) <- grid_points_df_f$grid_point
             n_dist_df$gp <- colnames(n_dist_df)
-          }
-          
-          ## Keep nodes within specified distance filter
-          nodes_dist_f <- n_dist_df %>%
-            dplyr::filter(gp == gp_max_RSSI[gp_max_RSSI$t_ind == interval,]$grid_point) %>% 
-            tidyr::gather(key = "gp_", 
-                          value = "distance") %>%
-            dplyr::filter(distance <= dist_filter) 
-          
-          ## If there are at least 3 nodes
-          if( nrow(nodes_dist_f) >= 3 ){
             
-            ## Filter calibration detections based on nodes within distance filter
-            dt_r_dets_f <- fdets_prep_sum %>% 
-              na.omit() %>% 
-              dplyr::filter(grid_point %in% nodes_dist_f$gp,
-                            t_ind == interval) 
+            ## Keep nodes within specified distance filter
+            nodes_dist_f <- n_dist_df %>%
+              dplyr::filter(gp == gp_max_RSSI[gp_max_RSSI$t_ind == interval,]$grid_point) %>% 
+              tidyr::gather(key = "gp_", 
+                            value = "distance") %>%
+              dplyr::filter(distance <= dist_filter) 
             
-            ## Bind to other cp dets
-            dt_r_dets_all <- dplyr::bind_rows(dt_r_dets_f,
-                                              dt_r_dets_all)
-            
+            ## If there are at least 3 nodes
+            if( nrow(nodes_dist_f) >= 3 ){
+              
+              ## Filter calibration detections based on nodes within distance filter
+              dt_r_dets_f <- fdets_prep_sum %>% 
+                na.omit() %>% 
+                dplyr::filter(grid_point %in% nodes_dist_f$gp,
+                              t_ind == interval) 
+              
+              ## Bind to other cp dets
+              dt_r_dets_all <- dplyr::bind_rows(dt_r_dets_f,
+                                                dt_r_dets_all)
+              
+            }
           }
           
         }
         
-
+        
         ## If any to process, make wide:
         if(nrow(dt_r_dets_all)>0){
           
@@ -193,20 +192,15 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                                      .y$date_round,
                                                      ".csv.gz"),
                                           row.names = F))
-          
         }
-        
-        
-        cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
-        
-      } else{
-        
-        cat("\n No records, skipped:", tag_f, "- day:", day_f,"\n")
-        
-      }
+      } 
+      
+      cat("\n Finished preparing tag:", tag_f, "- day:", day_f,"\n")
     }
   }
   # ## End progress bar
   # close(pb)
+  
+  cat("\n Finished tag:", tag_f, "- days prepared:", length(days), "\n")
   # 
 }
