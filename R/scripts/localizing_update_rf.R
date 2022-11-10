@@ -1,7 +1,7 @@
 ## Update localizaitons using RF method
 library(foreach)
 ## Source functions
-source("./R/functions/update_localizations.R")
+source("./R/functions/update_localizations_fn.R")
 source("./R/functions/rf_localizing_w_error_fn.R")
 source("./R/functions/rf_prepare_dets_error_fn.R")
 
