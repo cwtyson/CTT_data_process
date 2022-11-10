@@ -17,11 +17,10 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                      grid_points,
                                      output_folder, 
                                      tz,
-                                     tags = NULL,
                                      project = as.character(),
                                      window = "30 secs",
                                      lag = "-15 secs",
-                                     dist_filter = 300){
+                                     dist_filter = 305){
   
   ## Get unique days 
   days <- as.character(unique(dets_t$date))
@@ -40,7 +39,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
       # Sys.sleep(0.1)
       # setTxtProgressBar(pb, which(days == day_f))
       # 
-      # day_f = days[1]
+      # day_f = days[4]
       
       day_f_f <- as.Date(day_f, tz = tz)
       
@@ -62,7 +61,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                                       k = window,
                                                       lag = lag,
                                                       idx = "date_time",
-                                                      f = function(x) mean(x$rssi),
+                                                      f = function(x) mean(x$RSSI),
                                                       na_pad = FALSE)) %>% 
           dplyr::ungroup() %>% 
           dplyr::select(tag,
@@ -77,10 +76,10 @@ ml_prepare_dets_error_fn <- function(tag_f,
                           dt_r) %>% 
           na.omit() %>%
           dplyr::mutate(mean_RSSI_gp = round(mean(mean_RSSI_gp,
-                                                  na.rm = T), 0)) %>% 
+                                                  na.rm = T), 0),
+                        dets = dplyr::n()) %>% 
           dplyr::group_by(dt_r) %>% 
-          dplyr::mutate(dets = dplyr::n(),
-                        n_gp = dplyr::n_distinct(grid_point)) %>% 
+          dplyr::mutate(n_gp = dplyr::n_distinct(grid_point)) %>% 
           dplyr::distinct(grid_point,
                           dt_r,
                           .keep_all = T) %>% 
@@ -151,7 +150,9 @@ ml_prepare_dets_error_fn <- function(tag_f,
             dt_r_dets_f <- fdets_prep_sum %>% 
               na.omit() %>% 
               dplyr::filter(grid_point %in% nodes_dist_f$gp,
-                            t_ind == interval) 
+                            t_ind == interval)  %>% 
+              dplyr::mutate(n_gp = dplyr::n(),
+                            dets = sum(dets))
             
             ## Bind to other cp dets
             dt_r_dets_all <- dplyr::bind_rows(dt_r_dets_f,
@@ -194,10 +195,10 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                                      ".csv.gz"),
                                           row.names = F))
           
+          
+          cat("\n Finished tag:", tag_f, "- detections prepared:", nrow(dt_r_dets_w), "\n")
+          
         }
-        
-        
-        cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
         
       } else{
         
