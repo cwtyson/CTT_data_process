@@ -24,12 +24,12 @@ rf_prepare_dets_error <- function(tag_f, dets_t, output_folder, tz){
       Sys.sleep(0.1)
       setTxtProgressBar(pb, which(days == day_f))
       
-      # day_f = days[26]
+      # day_f = days[27]
       
       day_f_f <- as.Date(day_f, tz = tz)
       
       dets_2_prepare <- dets_t %>% 
-        filter(date == day_f_f)
+        dplyr::filter(date == day_f_f)
       
       ## If any to prepare
       if(nrow(dets_2_prepare) > 0){
@@ -57,7 +57,7 @@ rf_prepare_dets_error <- function(tag_f, dets_t, output_folder, tz){
                           dt_r,
                           .keep_all = TRUE) %>% 
           dplyr::group_by(dt_r) %>% 
-          dplyr::mutate(gps = n_distinct(grid_point),
+          dplyr::mutate(gps = dplyr::n_distinct(grid_point),
                         rssi_str = sum(mean_rssi > -100)) %>% 
           dplyr::select(tag,
                         grid_point,
@@ -66,21 +66,22 @@ rf_prepare_dets_error <- function(tag_f, dets_t, output_folder, tz){
                         sd_rssi,
                         gps,
                         rssi_str) %>% 
-          arrange(dt_r)
+          dplyr::arrange(dt_r)
         
         ## Get average SD for each mean RSSI to use for imputing
         fdets_prep_sum <- fdets_prep %>% 
-          mutate(mean_rssi_r = round(mean_rssi)) %>% 
-          group_by(mean_rssi_r) %>% 
-          summarise(mean_sd = mean(sd_rssi,na.rm  = TRUE))
+          dplyr::mutate(mean_rssi_r = round(mean_rssi)) %>% 
+          dplyr::group_by(mean_rssi_r) %>% 
+          dplyr::summarise(mean_sd = mean(sd_rssi,na.rm  = TRUE))
         
         ## Fill in missing values if possible
         fdets_prep_j <- fdets_prep %>% 
-          mutate(mean_rssi_r = round(mean_rssi)) %>% 
-          left_join(fdets_prep_sum, by = "mean_rssi_r") %>% 
+          dplyr::mutate(mean_rssi_r = round(mean_rssi)) %>% 
+          dplyr::left_join(fdets_prep_sum, by = "mean_rssi_r") %>% 
           
           ## Fill in with mean SD if missing
-          mutate(sd_rssi = ifelse(is.na(sd_rssi), mean_sd, sd_rssi))
+          dplyr::mutate(sd_rssi = ifelse(is.na(sd_rssi), mean_sd, sd_rssi)) %>% 
+          na.omit()
         
         
         ## Resample 500 times
