@@ -52,7 +52,7 @@ ml_localizing_fn <- function(tag_f,
     
     ## Set progress bar
     pb2 <- txtProgressBar(min = 0, max = length(files_2_localize), style = 3)
-    
+      
     ## Process each file for each tag separately ######
     for (file in files_2_localize){
       
@@ -74,8 +74,7 @@ ml_localizing_fn <- function(tag_f,
       ## Process for nls 
       dets_p <- dets %>% 
         
-        dplyr::select(-dets,
-                      -t_ind) %>% 
+        dplyr::select(-dets) %>% 
         
         dplyr::group_by(dt_r) %>% 
         tidyr::pivot_longer(cols = contains("gp_"),
@@ -132,7 +131,7 @@ ml_localizing_fn <- function(tag_f,
               for(i in 1:100){
                 
                 ## Sample within interval
-                dets_p_int <- dets_p_int %>% 
+                dets_p_int_sample <- dets_p_int %>% 
                   dplyr::rowwise() %>% 
                   dplyr::mutate(dist_est_samp = round(10^(sample(rnorm(n = 100, mean = mean,sd = sd),size = 1))))
                 
@@ -143,7 +142,7 @@ ml_localizing_fn <- function(tag_f,
                 nls_mod <- suppressWarnings(nls(dist_est_samp ~ geosphere::distm(data.frame(gp_lon, gp_lat), 
                                                                                  c(lng_solution, lat_solution), 
                                                                                  fun = distHaversine), # distm - matrix of pairwise distances between lat/longs
-                                                data = dets_p_int,
+                                                data = dets_p_int_sample,
                                                 start = list(lng_solution = max_RSSI$gp_lon,
                                                              lat_solution = max_RSSI$gp_lat),
                                                 control = nls.control(warnOnly = T,
