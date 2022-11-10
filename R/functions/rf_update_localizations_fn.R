@@ -101,12 +101,12 @@ rf_update_localization <- function(tag_f = as.character(),
   
   cat("\n Finished getting new data for tag", tag_f, "\n")
   
-  ## Prepare each tag
-  rf_prepare_dets_error(tag_f = tag_f, 
-                        dets_t = dets_t,
-                        output_folder = output_folder,
-                        tz = tz)
-  
+  # ## Prepare each tag
+  # rf_prepare_dets_error(tag_f = tag_f, 
+  #                       dets_t = dets_t,
+  #                       output_folder = output_folder,
+  #                       tz = tz)
+  # 
   ## Then localize
   rf_localizing_fn(tag_f = tag_f,
                    output_folder = output_folder,

@@ -8,7 +8,7 @@ rf_localizing_fn <- function(tag_f,
   # tag_f <- "2A1E664C"
   
   ## Read in RF map file
-  walking_dets_w <- readr::read_csv("/Users/tyson/Documents/academia/institutions/WUR/research/australia/zebby_tracking/data/detections_processed/rf_maps/rf_map_grid_points_wide_combined.csv",
+  walking_dets_w <- readr::read_csv("/Users/tyson/Documents/academia/research/zebby_tracking/data/processed_detections/rf/rf_maps/rf_map_grid_points_wide_combined.csv",
                                     show_col_types = FALSE)
   
   
@@ -16,20 +16,20 @@ rf_localizing_fn <- function(tag_f,
   prepared <- lubridate::ymd(gsub(".csv",
                                   "",
                                   list.files(paste0(output_folder,
-                                                    "/rf_prepared/w_error/60s/", 
+                                                    "data/processed_detections/rf/rf_prepared/w_error/60s/", 
                                                     tag_f, "/"))),
                              tz = tz)
   
   
   
   ## Get last date of files that have been localized
-  if(length(list.files(paste0(output_folder,"/rf_localized/w_error/60s/", tag_f))) > 0){
+  if(length(list.files(paste0(output_folder,"data/processed_detections/rf_localized/w_error/60s/", tag_f))) > 0){
     
     ## Get list of dates of detections that have already been prepared
     last_date <- suppressWarnings(max(lubridate::ymd(gsub(".csv|.csv.gz",
                                                           "",
                                                           list.files(paste0(output_folder,
-                                                                            "/rf_localized/w_error/60s/",
+                                                                            "data/processed_detections/rf/rf_localized/w_error/60s/",
                                                                             tag_f))),
                                                      tz = tz)))
     
@@ -37,7 +37,7 @@ rf_localizing_fn <- function(tag_f,
   
   ## Keep dates including and after last localized
   files_2_localize <- paste0(output_folder,
-                             "/rf_prepared/w_error/60s/", 
+                             "/data/processed_detections/rf_prepared/w_error/60s/", 
                              tag_f,
                              "/",
                              prepared[prepared >= last_date],
@@ -189,15 +189,15 @@ rf_localizing_fn <- function(tag_f,
     
     
     ## Create directory
-    if(!dir.exists(paste0(output_folder,"/rf_localized/w_error/60s/", tag_f))){
-      dir.create(paste0(output_folder,"/rf_localized/w_error/60s/", tag_f))
+    if(!dir.exists(paste0(output_folder,"data/processed_detections/rf/rf_localized/w_error/60s/", tag_f))){
+      dir.create(paste0(output_folder,"data/processed_detections/rf/rf_localized/w_error/60s/", tag_f))
     }
     
     
     ## Save
     readr::write_csv(ee_features,
                      paste0(output_folder,
-                            "/rf_localized/w_error/60s/", 
+                            "/data/processed_detections/rf/rf_localized/w_error/60s/", 
                             tag_f,
                             "/", 
                             as.character(day_f),".csv.gz"),
