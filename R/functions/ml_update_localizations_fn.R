@@ -10,7 +10,7 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
                                        log_dist_RSSI_mdl = as.character(),
                                        tz = "UTC"){
   
-  cat("\n Starting to get new data for tag:", tag_f, "\n")
+  cat("\n Starting to collect raw data for tag:", tag_f, "\n")
   
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
@@ -43,7 +43,7 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
     dplyr::distinct(tag,
                     node,
                     date_time,
-                    .keep_all = T)
+                    .keep_all = T) 
   
   ## Read in node codes
   node_codes <- readxl::read_excel(paste0(node_folder,"node_codes.xlsx")) %>% 
@@ -92,7 +92,8 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
   ## Add day column
   dets_t <- dets_f1 %>% 
     dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day"),
-                  grid_point = paste0("gp_", grid_point)) 
+                  grid_point = paste0("gp_", grid_point))  %>% 
+    dplyr::filter(!grepl("d",grid_point))
   
   ## Get grid point coordinates
   grid_points <- suppressWarnings(sf::read_sf(paste0(node_folder, "grid_point_coordinates.GPX")) %>% 
@@ -103,7 +104,7 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
                                     sf::st_drop_geometry())
   
   
-  cat("\n Finished getting new data for tag", tag_f, "\n")
+  cat("\n Finished collecting raw data for tag:", tag_f, "\n")
   
   ## Prepare each tag
   ml_prepare_dets_error_fn(tag_f = tag_f, 
@@ -112,11 +113,11 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
                            output_folder = output_folder,
                            tz = tz)
   
-  ## Then localize
-  ml_localizing_fn(tag_f = tag_f,
-                   output_folder = output_folder,
-                   grid_points = grid_points,
-                   log_dist_RSSI_mdl = log_dist_RSSI_mdl,
-                   tz = tz)
+  # ## Then localize
+  # ml_localizing_fn(tag_f = tag_f,
+  #                  output_folder = output_folder,
+  #                  grid_points = grid_points,
+  #                  log_dist_RSSI_mdl = log_dist_RSSI_mdl,
+  #                  tz = tz)
   
 }
