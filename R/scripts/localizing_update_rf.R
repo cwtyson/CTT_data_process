@@ -8,7 +8,7 @@ source("./R/functions/rf_prepare_dets_error_fn.R")
 cl <- parallel::makeForkCluster(7, outfile = "")
 doParallel::registerDoParallel(cl)
 
-tags <- list.files("/Users/tyson/Documents/academia/research/zebby_tracking/data/ml")
+tags <- list.files("/Users/tyson/Documents/academia/research/zebby_tracking/data/processed_detections/rf/rf_prepared/w_error/60s/")
 
 foreach(tag_f=tags,.packages=c("tidyverse","lubridate","readr"), 
         .verbose = TRUE) %dopar% 
