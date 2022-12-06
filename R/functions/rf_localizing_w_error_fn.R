@@ -177,8 +177,8 @@ rf_localizing_fn <- function(tag_f,
                               e1 = unlist(lapply(ellipse, function(x) sqrt(eigen(x$cov)$values)[1])),
                               e2 = unlist(lapply(ellipse, function(x) sqrt(eigen(x$cov)$values)[2])),
                               theta = unlist(lapply(u, function(x) (atan2(x[2],x[1])*360/(2*pi)) - 90)),
-                              a = sqrt(d2) * e1,  # semi-major axis
-                              b = sqrt(d2) * e2) %>%  # semi-minor axis)
+                              a = sqrt(d2 * e1),  # semi-major axis
+                              b = sqrt(d2 * e2)) %>%  # semi-minor axis)
                        select(tag,dt_r,x_center,y_center,cov,a,b,theta, cov) %>% 
                        mutate(a = ifelse(a == 0, NA, a),
                               b = ifelse(b == 0, NA, b)) %>% 

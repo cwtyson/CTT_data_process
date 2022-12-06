@@ -1,6 +1,6 @@
 ml_localizing_fn <- function(tag_f,
                              output_folder,
-                             grid_points,
+                             node_folder,
                              log_dist_RSSI_mdl,
                              tz = tz){
   
@@ -12,6 +12,15 @@ ml_localizing_fn <- function(tag_f,
                   mean = .fitted,
                   sd = .se.fit) %>% 
     dplyr::distinct(mean_rssi,.keep_all = T)
+  
+  ## Get grid point coordinates
+  grid_points <- suppressWarnings(sf::read_sf(paste0(node_folder, "grid_point_coordinates.GPX")) %>% 
+                                    sf::st_transform(3308) %>% 
+                                    dplyr::transmute(grid_point = gsub("Gp ", "gp_", name),
+                                                     x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
+                                                     y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
+                                    sf::st_drop_geometry())
+  
   
   ## Convert grid points to lat/long  ########
   grid_points_ll <- suppressWarnings(grid_points %>%
@@ -190,8 +199,8 @@ ml_localizing_fn <- function(tag_f,
               
               ## Axes
               e <- sqrt(eigen.info$values)
-              a <- sqrt(e[1]/2)  # semi-major axis
-              b <- sqrt(e[2]/2)  # semi-minor axis
+              a <- sqrt(e[1]*2)  # semi-major axis
+              b <- sqrt(e[2]*2)  # semi-minor axis
               # error_ellipse_area = round(a*b*pi, 0) # area of error ellipse
               
               ## Orientation
