@@ -18,12 +18,12 @@ rf_update_localization <- function(tag_f = as.character(),
                          password = db_password)
   
   ## Get most recent date file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detections/rf/prepared/w_error/60s/",tag_f,"/"),full.names = TRUE))[1]
+  mrdf <- rev(list.files(paste0(output_folder,"data/processed_detections/rf/rf_prepared/w_error/60s/",tag_f,"/"),full.names = TRUE))[1]
   
   ## Get date time to filter by 
   if(length(mrdf)==1){
-    mrd <- suppressWarnings(read_csv(mrdf,show_col_types = FALSE) %>% 
-                              pull(dt_r) %>% 
+    mrd <- suppressWarnings(readr::read_csv(mrdf,show_col_types = FALSE) %>% 
+                              dplyr::pull(dt_r) %>% 
                               max())
     mrd <- lubridate::with_tz(mrd, tz = tz)
   } else{
@@ -101,12 +101,12 @@ rf_update_localization <- function(tag_f = as.character(),
   
   cat("\n Finished getting new data for tag", tag_f, "\n")
   
-  ## Prepare each tag
-  rf_prepare_dets_error(tag_f = tag_f, 
-                        dets_t = dets_t,
-                        output_folder = output_folder,
-                        tz = tz)
-  
+  # ## Prepare each tag
+  # rf_prepare_dets_error(tag_f = tag_f, 
+  #                       dets_t = dets_t,
+  #                       output_folder = output_folder,
+  #                       tz = tz)
+  # 
   ## Then localize
   rf_localizing_fn(tag_f = tag_f,
                    output_folder = output_folder,

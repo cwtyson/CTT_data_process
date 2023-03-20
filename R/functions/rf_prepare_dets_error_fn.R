@@ -106,15 +106,15 @@ rf_prepare_dets_error <- function(tag_f, dets_t, output_folder, tz){
         }
         
         ## Create directory
-        if(!dir.exists(paste0(output_folder,"/data/processed_detections/prepared/w_error/60s/", tag_f))){
-          dir.create(paste0(output_folder,"/data/processed_detections/prepared/w_error/60s/", tag_f))
+        if(!dir.exists(paste0(output_folder,"/data/processed_detections/rf_prepared/w_error/60s/", tag_f))){
+          dir.create(paste0(output_folder,"/data/processed_detections/rf_prepared/w_error/60s/", tag_f))
         }
         
         
         ## Save
         readr::write_csv(fdets_wide,
                          paste0(output_folder,
-                                "/data/processed_detections/prepared/w_error/60s/", 
+                                "/data/processed_detections/rf_prepared/w_error/60s/", 
                                 tag_f,
                                 "/", 
                                 as.character(day_f),".csv.gz"),
