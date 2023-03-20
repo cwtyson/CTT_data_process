@@ -8,7 +8,7 @@ source("./R/functions/ml_localize_dets_error_fn.R")
 cl <- parallel::makeForkCluster(8, outfile = "")
 doParallel::registerDoParallel(cl)
 
-tags <- list.files("/Users/tyson/Google Drive/Other computers/My Mac mini/processed_detections/ml/ml_prepared/w_error/15s/")[60:133]
+tags <- list.files("/Users/tyson/Google Drive/Other computers/My Mac mini/processed_detections/ml/ml_prepared//")
 
 # foreach(tag_f=tags,.packages=c("tidyverse","lubridate","readr","geosphere"), 
 #         .verbose = TRUE) %dopar% 
