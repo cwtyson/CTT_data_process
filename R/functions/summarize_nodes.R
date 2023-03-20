@@ -154,7 +154,7 @@ summarize_nodes <- function(project = as.character(),
                                color = grey(0.4),
                                color = wesanderson::wes_palette("Zissou1", 100, type = "continuous")[60]) +
           ggplot2::labs(x = NULL, y = "Detections") +
-          scale_y_continuous(limits = c(0,1000)) +
+          scale_y_continuous(limits = c(0,25000)) +
           # ggplot2::facet_grid(metric~., scales = "free") +
           ggplot2::theme_minimal())
       
@@ -175,3 +175,5 @@ summarize_nodes <- function(project = as.character(),
   }
   
 }
+
+

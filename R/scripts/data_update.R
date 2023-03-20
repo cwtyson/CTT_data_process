@@ -21,7 +21,7 @@ process_dets(db_name = db_name,
              db_user = db_user,
              db_password = db_password,
              project = "Eswatini",
-             sensor_station_code = c("31517E791AAE","31556FCE4EEA"),
+             sensor_station_code = c("31517E791AAE","31556FCE4EEA", "3DDBDADF9153"),
              tz = "Africa/Mbabane")
 
 # ## Process detection data
@@ -29,7 +29,7 @@ process_nodes(db_name = db_name,
               db_user = db_user,
               db_password = db_password,
               project = "Eswatini",
-              sensor_station_code = c("31517E791AAE","31556FCE4EEA"),
+              sensor_station_code = c("31517E791AAE","31556FCE4EEA","3DDBDADF9153"),
               tz = "Africa/Mbabane")
 
 # ## Summarize detections and plot
