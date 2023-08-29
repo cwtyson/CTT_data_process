@@ -1,8 +1,10 @@
 ml_localizing_fn <- function(tag_f,
                              output_folder,
                              node_folder,
+                             grid_points_folder,
                              log_dist_RSSI_mdl,
-                             tz = tz){
+                             tz = tz,
+                             crs = crs){
   
   ## Read in model
   mdl_tab <- readRDS(log_dist_RSSI_mdl) %>% 
@@ -14,9 +16,9 @@ ml_localizing_fn <- function(tag_f,
     dplyr::distinct(mean_rssi,.keep_all = T)
   
   ## Get grid point coordinates
-  grid_points <- suppressWarnings(sf::read_sf(paste0(node_folder, "grid_point_coordinates.GPX")) %>% 
-                                    sf::st_transform(3308) %>% 
-                                    dplyr::transmute(grid_point = gsub("Gp ", "gp_", name),
+  grid_points <- suppressWarnings(sf::read_sf(paste0(grid_points_folder, "grid_points.kml")) %>% 
+                                    sf::st_transform(crs) %>% 
+                                    dplyr::transmute(grid_point = gsub("Gp ", "gp_", Name),
                                                      x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
                                                      y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                     sf::st_drop_geometry())
@@ -25,7 +27,7 @@ ml_localizing_fn <- function(tag_f,
   ## Convert grid points to lat/long  ########
   grid_points_ll <- suppressWarnings(grid_points %>%
                                        sf::st_as_sf(coords = c("x","y"),
-                                                    crs = 3308) %>% 
+                                                    crs = crs) %>% 
                                        sf::st_transform(4326) %>% 
                                        dplyr::transmute(grid_point,
                                                         gp_lon = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
@@ -42,13 +44,15 @@ ml_localizing_fn <- function(tag_f,
   files_prep <- list.files(path = paste0(output_folder,
                                          "/ml_prepared/w_error/15s/",
                                          tag_f,
-                                         "/"))
+                                         "/"),
+                           ".csv.gz")
   
   ## Get files that have been localized
   files_localized <- list.files(path = paste0(output_folder,
                                               "/ml_localized/w_error/15s/",
                                               tag_f,
-                                              "/"))
+                                              "/"),
+                                ".csv.gz")
   ## If any files
   if(length(files_prep[!(files_prep %in% files_localized)]) > 0){
     
@@ -59,9 +63,13 @@ ml_localizing_fn <- function(tag_f,
                                "/",
                                files_prep[!(files_prep %in% files_localized)])
     
+    
+    
+    cat("\n Starting tag:", tag_f, " - ", length(files_2_localize), "days to localize", "\n")
+    
     ## Set progress bar
     pb2 <- txtProgressBar(min = 0, max = length(files_2_localize), style = 3)
-      
+    
     ## Process each file for each tag separately ######
     for (file in files_2_localize){
       
@@ -114,17 +122,17 @@ ml_localizing_fn <- function(tag_f,
         ## Empty df
         tag_loc_est <- data.frame()
         
-        # ## Set progress bar
-        # pb_ints <- txtProgressBar(min = 0, max = 100, style = 3)
+        ## Set progress bar
+        pb_ints <- txtProgressBar(min = 0, max = 100, style = 3)
         # 
         ## For each interval
         for(int in unique(dets_p$t_ind)){
           
           # int = unique(dets_p$t_ind)[10]
           
-          # ## Progress bar
-          # Sys.sleep(0.1)
-          # setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
+          ## Progress bar
+          Sys.sleep(0.1)
+          setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
           # 
           tryCatch(
             expr = {
@@ -144,7 +152,7 @@ ml_localizing_fn <- function(tag_f,
                   dplyr::rowwise() %>% 
                   dplyr::mutate(dist_est_samp = round(10^(sample(rnorm(n = 100, mean = mean,sd = sd),size = 1))))
                 
-                # Determine the node with the strongest avg.RSSI value to be used as starting values
+                # Determine the node with the strongest avg rssi value to be used as starting values
                 max_RSSI <- dets_p_int[which.max(dets_p_int$mean_rssi),]
                 
                 # Non-linear test to optimize the location of unknown signal by looking at the radius around each Node based on RSSI values (distance) and the pairwise distance between all nodes
@@ -168,7 +176,7 @@ ml_localizing_fn <- function(tag_f,
                   data.frame() %>%
                   sf::st_as_sf(coords = c("x", "y")) %>%
                   sf::st_set_crs(4326) %>%
-                  sf::st_transform(3308) %>%
+                  sf::st_transform(crs) %>%
                   dplyr::transmute(x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
                                    y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>%
                   sf::st_drop_geometry()
@@ -182,17 +190,16 @@ ml_localizing_fn <- function(tag_f,
                 
               }
               
-              
               ## Get average point
               pts <- do.call(rbind, ellipse_center_est) %>% 
                 as.data.frame()
               mean_pt_est <- data.frame(x = mean(pts$x),
                                         y = mean(pts$y))
-            
+              
               # ggplot() +
               #   geom_point(data = pts, aes(x,y)) +
               #   geom_point(data = mean_pt_est, aes(x,y), color = "red")
-
+              
               ## Get mean covariance matrix
               mean_cov <- apply(simplify2array(ellipse_cov_est), c(1,2), mean)
               eigen.info <- eigen(mean_cov)
@@ -229,9 +236,9 @@ ml_localizing_fn <- function(tag_f,
             }
             
           )
-
+          
           # close(pb_ints)
-                    
+          
         }
         
         ## Save as separate file
@@ -241,12 +248,12 @@ ml_localizing_fn <- function(tag_f,
                                 tag_f,
                                 "/",
                                 tag_f_date,
-                                ".csv"))
+                                ".csv.gz"))
         
         cat("\n Finished tag:", tag_f, "- date:", tag_f_date, "-", length(unique(dets_p$t_ind)), "intervals localized", 
             "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n")
         
-
+        
       } else {
         
         cat("\n No intervals to localize, skipped file")
@@ -257,7 +264,7 @@ ml_localizing_fn <- function(tag_f,
     
   } else{
     
-    cat("\n No new files to localize, skipped tag")
+    cat("\n No new files to localize, skipped tag:", tag_f)
     
   }
   

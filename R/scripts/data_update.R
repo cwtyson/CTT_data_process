@@ -20,27 +20,27 @@ source("./R/functions/map_nodes.R")
 process_dets(db_name = db_name,
              db_user = db_user,
              db_password = db_password,
-             project = "Eswatini",
+             project = "zebby",
              sensor_station_code = c("31517E791AAE","31556FCE4EEA", "3DDBDADF9153"),
-             tz = "Africa/Mbabane")
+             tz = "Australia/Broken_Hill")
 
 # ## Process detection data
 process_nodes(db_name = db_name,
               db_user = db_user,
               db_password = db_password,
-              project = "Eswatini",
+              project = "zebby",
               sensor_station_code = c("31517E791AAE","31556FCE4EEA","3DDBDADF9153"),
-              tz = "Africa/Mbabane")
+              tz = "Australia/Broken_Hill")
 
 # ## Summarize detections and plot
-summarize_dets(project = "Eswatini",
+summarize_dets(project = "zebby",
                plot_type = "both",
                interval = "day")
 
 # Summarize detections and plot
-summarize_nodes(project = "Eswatini",
+summarize_nodes(project = "zebby",
                 plot_type = "both",
                 interval = "6 hours")
 
-map_nodes(project = "Eswatini",
-          tz = "Africa/Mbabane")
+map_nodes(project = "zebby",
+          tz = "Australia/Broken_Hill")
