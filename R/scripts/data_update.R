@@ -20,16 +20,16 @@ source("./R/functions/map_nodes.R")
 process_dets(db_name = db_name,
              db_user = db_user,
              db_password = db_password,
-             project = "zebby",
-             sensor_station_code = c("31517E791AAE","31556FCE4EEA", "3DDBDADF9153"),
-             tz = "Australia/Broken_Hill")
+             project = "Mousebird",
+             sensor_station_code = c("D82AA0A12259"),
+             tz = "AAustralia/Broken_Hill")
 
 # ## Process detection data
 process_nodes(db_name = db_name,
               db_user = db_user,
               db_password = db_password,
-              project = "zebby",
-              sensor_station_code = c("31517E791AAE","31556FCE4EEA","3DDBDADF9153"),
+              project = "Mousebird",
+              sensor_station_code = c("D82AA0A12259"),
               tz = "Australia/Broken_Hill")
 
 # ## Summarize detections and plot
