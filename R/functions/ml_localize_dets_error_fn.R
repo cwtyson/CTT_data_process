@@ -1,38 +1,37 @@
-ml_localizing_fn <- function(tag_f,
-                             output_folder,
-                             node_folder,
-                             grid_points_folder,
-                             log_dist_RSSI_mdl,
-                             tz = tz,
-                             crs = crs){
+ml_localize_dets_error_fn <- function(tag_f,
+                                      output_folder,
+                                      node_folder,
+                                      grid_points_folder,
+                                      log_dist_RSSI_mdl,
+                                      tz = tz,
+                                      crs = crs,
+                                      reps = reps){
   
-  log_dist_RSSI_mdl <- readRDS(log_dist_RSSI_mdl)
+  cat("############ \n",
+      "Starting localizing tag: ", tag_f, "\n",
+      "############ \n", sep = "")
   
-  ## Read in model
-  deg.f <- log_dist_RSSI_mdl$df.residual
-  
-  ## Convert to table
-  mdl_tab <- log_dist_RSSI_mdl %>% 
+  ## Read in model and convert to table
+  mdl_tab <- readRDS(log_dist_RSSI_mdl) %>% 
     broom::augment(newdata = data.frame(rssi = seq(-25, -115, by = -1)),
-                   se_fit = TRUE,
-                   interval = "confidence") %>% 
-    dplyr::transmute( mean_rssi = rssi,
-                      mean = .fitted,
-                      sd = sqrt(.se.fit * deg.f)) %>% 
+                   se_fit = TRUE) %>% 
+    dplyr::select(mean_rssi = rssi,
+                  mean = .fitted,
+                  sd = .se.fit) %>% 
     dplyr::distinct(mean_rssi,.keep_all = T)
   
   ## Get grid point coordinates
   grid_points <- suppressWarnings(sf::read_sf(paste0(grid_points_folder, "grid_points.kml")) %>% 
                                     sf::st_transform(crs) %>% 
                                     dplyr::transmute(grid_point = gsub("Gp ", "gp_", Name),
-                                                     x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
-                                                     y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
+                                                     gp_x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
+                                                     gp_y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                     sf::st_drop_geometry())
   
   
   ## Convert grid points to lat/long  ########
   grid_points_ll <- suppressWarnings(grid_points %>%
-                                       sf::st_as_sf(coords = c("x","y"),
+                                       sf::st_as_sf(coords = c("gp_x","gp_y"),
                                                     crs = crs) %>% 
                                        sf::st_transform(4326) %>% 
                                        dplyr::transmute(grid_point,
@@ -59,19 +58,18 @@ ml_localizing_fn <- function(tag_f,
                                               tag_f,
                                               "/"),
                                 ".csv.gz")
+  
+  ## Files to localize
+  files_2_localize <- paste0(output_folder,
+                             "ml_prepared/w_error/15s/",
+                             tag_f,
+                             "/",
+                             files_prep[!(files_prep %in% files_localized)])
+  
+  
   ## If any files
-  if(length(files_prep[!(files_prep %in% files_localized)]) > 0){
+  if(length(files_2_localize) > 0){
     
-    ## Files to localize
-    files_2_localize <- paste0(output_folder,
-                               "/ml_prepared/w_error/15s/",
-                               tag_f,
-                               "/",
-                               files_prep[!(files_prep %in% files_localized)])
-    
-    
-    
-    cat("\n Starting tag:", tag_f, " - ", length(files_2_localize), "days to localize", "\n")
     
     ## Set progress bar
     pb2 <- txtProgressBar(min = 0, max = length(files_2_localize), style = 3)
@@ -100,7 +98,7 @@ ml_localizing_fn <- function(tag_f,
         dplyr::select(-dets) %>% 
         
         dplyr::group_by(dt_r) %>% 
-        tidyr::pivot_longer(cols = contains("gp_"),
+        tidyr::pivot_longer(cols = matches("^gp|^Pp"),
                             names_to = "grid_point",
                             values_to = "mean_rssi") %>% 
         na.omit() %>% 
@@ -130,103 +128,131 @@ ml_localizing_fn <- function(tag_f,
         
         ## Set progress bar
         pb_ints <- txtProgressBar(min = 0, max = 100, style = 3)
-        # 
+        
         ## For each interval
         for(int in unique(dets_p$t_ind)){
           
-          # int = unique(dets_p$t_ind)[10]
+          # int = unique(dets_p$t_ind)[1]
           
           ## Progress bar
           Sys.sleep(0.1)
           setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
-          # 
-          ## Progress bar
-          Sys.sleep(0.1)
-          setTxtProgressBar(pb, which(unique(dets_p$t_ind) == int))
           
           tryCatch(
             expr = {
               
               ## Subset detections
               dets_p_int = dets_p[dets_p$t_ind == int,]
-      
-              ## Repeat x times
-              for(i in 1:500){
+              
+              ## Ellipse info
+              ellipse_center_est <- list()
+              ellipse_cov_est <- list()
+              
+              ## Repeat X times
+              for(i in 1:reps){
                 
-                ## Sample within interval
-                dets_p_int_sample <- dets_p_int %>%
-                  dplyr::rowwise() %>%
-                  dplyr::mutate(dist_est_sample = round(10^(sample(rnorm(n = 100, mean = mean,sd = sd),size = 1))),
+                ## Sample within interval - SD set to 0
+                dets_p_int_sample <- dets_p_int %>% 
+                  dplyr::rowwise() %>% 
+                  dplyr::mutate(dist_est_samp = round(10^(sample(rnorm(n = 100, mean = mean,sd = sd),size = 1))),
                                 
                                 ## Cutoff estimates at 150 m
-                                dist_est_sample = ifelse(dist_est_sample > 150, 150, dist_est_sample))
+                                dist_est_samp = ifelse(dist_est_samp > 150, 150, dist_est_samp))
                 
                 # Determine the node with the strongest avg.RSSI value to be used as starting values
-                max_RSSI <- dets_p_int_sample[which.max(dets_p_int$mean_rssi),]
+                max_RSSI <- dets_p_int[which.max(dets_p_int$mean_rssi),]
                 
-                ## Non-linear test to optimize the location of unknown signal
-                nls_mod <- suppressWarnings(nls(dist_est_sample ~ raster::pointDistance(data.frame(gp_x, gp_y),
-                                                                                        c(x_solution, y_solution),
-                                                                                        lonlat = F, allpairs = T), # distm - matrix of pairwise distances between lat/longs
+                # Non-linear test to optimize the location of unknown signal by looking at the radius around each Node based on RSSI values (distance) and the pairwise distance between all nodes
+                nls_mod <- suppressWarnings(nls(dist_est_samp ~ geosphere::distm(data.frame(gp_lon, gp_lat), 
+                                                                                 c(lng_solution, lat_solution), 
+                                                                                 fun = distHaversine), # distm - matrix of pairwise distances between lat/longs
                                                 data = dets_p_int_sample,
-                                                start = list(x_solution = max_RSSI$gp_x,
-                                                             y_solution = max_RSSI$gp_y),
+                                                start = list(lng_solution = max_RSSI$gp_lon,
+                                                             lat_solution = max_RSSI$gp_lat),
                                                 control = nls.control(warnOnly = T,
                                                                       minFactor=1/30000)))
                 
+                ## Determine error around the point location estimate
+                ellipse <- car::confidenceEllipse(nls_mod, 
+                                                  levels = 1-exp(-1), 
+                                                  segments = 1000, 
+                                                  draw = F) 
+                
+                ## Project
+                ellipse_coords_proj <- ellipse %>%
+                  data.frame() %>%
+                  sf::st_as_sf(coords = c("x", "y")) %>%
+                  sf::st_set_crs(4326) %>%
+                  sf::st_transform(crs) %>%
+                  dplyr::transmute(x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
+                                   y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>%
+                  sf::st_drop_geometry()
+                
+                ## Ellipse error features
+                ell.info <- cov.wt(ellipse_coords_proj)
+                
+                ## Add ellipse info to list
+                ellipse_center_est[[i]] <- ell.info$center
+                ellipse_cov_est[[i]] <- ell.info$cov
+                
               }
               
-              ## Get ellipse features
-              ee_features<- suppressWarnings(pts %>%
-                                               # mutate(rep = 1) %>%
-                                               nest() %>%
-                                               mutate(ellipse = lapply(data, function(x) cluster::ellipsoidhull(cbind(x$x,
-                                                                                                                      x$y))),
-                                                      x_center = unlist(lapply(ellipse, function(x) x$loc[1])),
-                                                      y_center = unlist(lapply(ellipse, function(x) x$loc[2])),
-                                                      cov = lapply(ellipse, function(x) x$cov),
-                                                      vec = lapply(ellipse, function(x) eigen(x$cov)),
-                                                      u = lapply(vec, function(x) x$vectors[,1]),
-                                                      # d2 = unlist(lapply(ellipse, function(x) x[[3]])),
-                                                      e1 = unlist(lapply(ellipse, function(x) sqrt(eigen(x$cov)$values)[1])),
-                                                      e2 = unlist(lapply(ellipse, function(x) sqrt(eigen(x$cov)$values)[2])),
-                                                      theta = unlist(lapply(u, function(x) (atan2(x[2],x[1])*360/(2*pi)) - 90)),
-                                                      a = sqrt(2 * e1),  # semi-major axis
-                                                      b = sqrt(2 * e2)) %>%  # semi-minor axis)
-                                               select(x_center,y_center,cov,a,b,theta, cov) %>%
-                                               mutate(a = ifelse(a == 0, NA, a),
-                                                      b = ifelse(b == 0, NA, b)) %>%
-                                               na.omit())
+              
+              ## Get average point
+              pts <- do.call(rbind, ellipse_center_est) %>% 
+                as.data.frame()
+              mean_pt_est <- data.frame(x = mean(pts$x),
+                                        y = mean(pts$y))
+              
+              # ggplot() +
+              #   geom_point(data = pts, aes(x,y)) +
+              #   geom_point(data = mean_pt_est, aes(x,y), color = "red")
+              
+              ## Get mean covariance matrix
+              mean_cov <- apply(simplify2array(ellipse_cov_est), c(1,2), mean)
+              eigen.info <- eigen(mean_cov)
+              
+              ## Axes
+              e <- sqrt(eigen.info$values)
+              a <- sqrt(e[1]/2)  # semi-major axis
+              b <- sqrt(e[2]/2)  # semi-minor axis
+              # error_ellipse_area = round(a*b*pi, 0) # area of error ellipse
+              
+              ## Orientation
+              u <- eigen.info$vectors[,1] # major axis eigenvector
+              theta <- atan2(u[2],u[1]) # angle from x-axis in radians
+              theta <- theta *360/(2*pi) # angle from x-axis in degrees
+              theta <- theta - 90 # angle from y-axis in degrees
               
               ## Combine estimated locations with summary information
-              tag_int_loc_est <- data.frame(tag = as.character(dets_p_int$tag[1]),
+              tag_int_loc_est <- data.frame(tag = tag_f,
                                             dt_r = dets_p_int$dt_r[1],
                                             n_gp = dets_p_int$n_gp[1],
                                             mean_RSSI = mean(dets_p_int$mean_rssi),
                                             max_RSSI = max(dets_p_int$mean_rssi),
-                                            x_est = ee_features$x_center,
-                                            y_est = ee_features$y_center,
-                                            cov = paste(as.numeric(unlist(ee_features$cov)), collapse = ","),
-                                            a = ee_features$a,
-                                            b = ee_features$b,
-                                            theta = ee_features$theta)
+                                            x_est = mean_pt_est$x,
+                                            y_est = mean_pt_est$y,
+                                            semi_major = a,
+                                            semi_minor = b,
+                                            orientation = theta)
               
               ## Combine
               tag_loc_est <- rbind(tag_loc_est, tag_int_loc_est)
             },
             error = function(e){ 
-              cat(int, ": too few detections to trilaterate location \n")
+              "Too few detections to trilaterate location"
             }
+            
           )
           
-          close(pb_ints)
+          # close(pb_ints)
           
         }
         
         ## Save as separate file
         readr::write_csv(tag_loc_est,
                          paste0(output_folder, 
-                                "ml_localized/w_error/15s/",
+                                "/ml_localized/w_error/15s/",
                                 tag_f,
                                 "/",
                                 tag_f_date,
@@ -246,11 +272,18 @@ ml_localizing_fn <- function(tag_f,
     
   } else{
     
-    cat("\n No new files to localize, skipped tag:", tag_f)
+    cat("############ \n",
+        "Finished localizing tag: ", tag_f, "\n",
+        "############ \n", sep = "")
     
   }
   
   ## End progress bar for files
   close(pb2)
+  
+  cat("############ \n",
+      "Finished localizing tag: ", tag_f, "\n",
+      "############ \n", sep = "")
+  
   
 }
