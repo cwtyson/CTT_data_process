@@ -12,4 +12,6 @@ Icon?
 
 ## Ignore profile informatin
 /R/profile_info.R
+
+## Ignore project fiels
 /project/
