@@ -22,13 +22,12 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                      lag = "-15 secs",
                                      dist_filter = 305){
   
-  
   ## Get unique days 
   days <- as.character(unique(dets_t$date))
   
   ## Set progress bar for preparing tags
   pb <- txtProgressBar(min = 0, max = length(days), style = 3)
-
+  
   ## Files that still need to be processed
   if(length(days) > 0){
     
@@ -178,33 +177,34 @@ ml_prepare_dets_error_fn <- function(tag_f,
             dplyr::mutate(date_round = lubridate::floor_date(dt_r, unit = "day"))
           
           ## Create directory if needed
-          if(!dir.exists(paste0(output_folder, "/ml_prepared/w_error/15s/", tag_f))){
+          if(!dir.exists(paste0(output_folder, "/",tag_f))){
             
-            dir.create(paste0(output_folder, "/ml_prepared/w_error/15s/", tag_f))  
+            dir.create(paste0(output_folder,"/", tag_f))  
+            
+            ## Split based on date round and save (not neecessary to use this approach, but keeping for now)
+            dt_r_dets_w %>% 
+              dplyr::group_by(date_round) %>% 
+              dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
+                                                       "/",
+                                                       tag_f,
+                                                       "/",
+                                                       .y$date_round,
+                                                       ".csv.gz"),
+                                            row.names = F))
           }
-          
-          ## Split based on date round and save (not neecessary, but keeping for now)
-          dt_r_dets_w %>% 
-            dplyr::group_by(date_round) %>% 
-            dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
-                                                     "/ml_prepared/w_error/15s/",
-                                                     tag_f,
-                                                     "/",
-                                                     .y$date_round,
-                                                     ".csv.gz"),
-                                          row.names = F))
-        }
-      } 
-      
-      cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
+        } 
+        
+        cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
+      }
     }
+    # ## End progress bar
+    close(pb)
+    
+    cat("############ \n",
+        "Finished preparing tag: ", tag_f," - days prepared: ", length(days), "\n",
+        "############ \n", sep = "")
+    
+    
   }
-  # ## End progress bar
-  close(pb)
   
-  cat("############ \n",
-      "Finished preparing tag: ", tag_f," - days prepared: ", length(days), "\n",
-      "############ \n", sep = "")
-  
-
 }

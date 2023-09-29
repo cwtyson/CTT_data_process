@@ -40,28 +40,27 @@ ml_localize_dets_error_fn <- function(tag_f,
                                        sf::st_drop_geometry())
   
   ## Create directory if needed
-  if(!dir.exists(paste0(output_folder,"ml_localized/w_error/15s/", tag_f))){
+  if(!dir.exists(paste0(output_folder,"/", tag_f))){
     
-    dir.create(paste0(output_folder,"ml_localized/w_error/15s/", tag_f))  
+    dir.create(paste0(output_folder,"/", tag_f))  
   }
   
   ## Prepared files
   files_prep <- list.files(path = paste0(output_folder,
-                                         "/ml_prepared/w_error/15s/",
+                                         "/",
                                          tag_f,
                                          "/"),
                            ".csv.gz")
   
   ## Get files that have been localized
   files_localized <- list.files(path = paste0(output_folder,
-                                              "/ml_localized/w_error/15s/",
+                                              "/",
                                               tag_f,
                                               "/"),
                                 ".csv.gz")
   
   ## Files to localize
   files_2_localize <- paste0(output_folder,
-                             "ml_prepared/w_error/15s/",
                              tag_f,
                              "/",
                              files_prep[!(files_prep %in% files_localized)])
@@ -252,7 +251,7 @@ ml_localize_dets_error_fn <- function(tag_f,
         ## Save as separate file
         readr::write_csv(tag_loc_est,
                          paste0(output_folder, 
-                                "/ml_localized/w_error/15s/",
+                                "/",
                                 tag_f,
                                 "/",
                                 tag_f_date,
