@@ -22,6 +22,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
                                      lag = "-15 secs",
                                      dist_filter = 305){
   
+  
   ## Get unique days 
   days <- as.character(unique(dets_t$date))
   
@@ -201,6 +202,9 @@ ml_prepare_dets_error_fn <- function(tag_f,
   # ## End progress bar
   close(pb)
   
-  cat("\n Finished tag:", tag_f, "- days prepared:", length(days), "\n")
-  # 
+  cat("############ \n",
+      "Finished preparing tag: ", tag_f," - days prepared: ", length(days), "\n",
+      "############ \n", sep = "")
+  
+
 }
