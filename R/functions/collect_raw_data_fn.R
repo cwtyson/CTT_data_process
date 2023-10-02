@@ -1,10 +1,10 @@
 ## Collect raw data
 collect_raw_data_fn <- function(db_name = db_name,
-                                # db_user = db_user,
                                 db_password = db_password,
                                 output_folder = output_folder,
                                 tag_folder = tag_folder,
                                 node_folder = node_folder,
+                                grid_points_folder = grid_points_folder,
                                 tag_f = tag_f,
                                 tz = tz){
   
@@ -19,7 +19,7 @@ collect_raw_data_fn <- function(db_name = db_name,
                          password = db_password)
   
   ## Get most recently prepared data file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"ml_prepared/w_error/15s/",tag_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
+  mrdf <- rev(list.files(paste0(output_folder,"/ml_prepared/",tag_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
   
   ## Get date time to filter by
   if(!is.na(mrdf)){
@@ -74,8 +74,15 @@ collect_raw_data_fn <- function(db_name = db_name,
   
   if(nrow(dets_f) > 0){
     
+    ## Read in tag log and reformat
+    node_codes_mr <- sort(list.files(paste0(node_folder),
+                                  full.names = TRUE,
+                                  pattern = "node_codes"),
+                       decreasing = TRUE)[1]
+    
+    
     ## Read in node codes
-    node_codes <- readxl::read_xlsx(paste0(node_folder,"node_codes.xlsx")) %>%
+    node_codes <- readxl::read_xlsx(node_codes_mr) %>%
       dplyr::mutate(node_number = as.character(node_number))
     
     ## Read in node log and reformat
@@ -124,12 +131,19 @@ collect_raw_data_fn <- function(db_name = db_name,
                     grid_point = paste0("gp_", grid_point))  %>%
       dplyr::filter(!grepl("d",grid_point))
     
+    ## Read in grid points
+    grid_points_mr <- sort(list.files(paste0(grid_points_folder),
+                                      full.names = TRUE,
+                                      pattern = "points"),
+                           decreasing = TRUE)[1]
+    
+    
     ## Get grid point coordinates
-    grid_points <- suppressWarnings(sf::read_sf(paste0(grid_points_folder, "grid_points.kml")) %>%
-                                      sf::st_transform(crs) %>%
-                                      dplyr::transmute(grid_point = gsub("Gp ", "gp_", Name),
-                                                       x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
-                                                       y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>%
+    grid_points <- suppressWarnings(sf::read_sf(grid_points_mr) %>% 
+                                      sf::st_transform(crs) %>% 
+                                      dplyr::transmute(grid_point = gsub("Gp ", "gp_", name),
+                                                       gp_x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
+                                                       gp_y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                       sf::st_drop_geometry())
     
     return(dets_t)

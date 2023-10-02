@@ -20,15 +20,6 @@ ml_localize_dets_error_fn <- function(tag_f,
                   sd = .se.fit) %>% 
     dplyr::distinct(mean_rssi,.keep_all = T)
   
-  ## Get grid point coordinates
-  grid_points <- suppressWarnings(sf::read_sf(paste0(grid_points_folder, "grid_points.kml")) %>% 
-                                    sf::st_transform(crs) %>% 
-                                    dplyr::transmute(grid_point = gsub("Gp ", "gp_", Name),
-                                                     gp_x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
-                                                     gp_y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
-                                    sf::st_drop_geometry())
-  
-  
   ## Convert grid points to lat/long  ########
   grid_points_ll <- suppressWarnings(grid_points %>%
                                        sf::st_as_sf(coords = c("gp_x","gp_y"),
@@ -40,9 +31,10 @@ ml_localize_dets_error_fn <- function(tag_f,
                                        sf::st_drop_geometry())
   
   ## Create directory if needed
-  if(!dir.exists(paste0(output_folder,"/", tag_f))){
+  if(!dir.exists(paste0(output_folder,"/ml_localized/", tag_f))){
     
-    dir.create(paste0(output_folder,"/", tag_f))  
+    suppressWarnings(dir.create(paste0(output_folder,"/ml_localized")))
+    dir.create(paste0(output_folder,"/ml_localized/", tag_f))  
   }
   
   ## Prepared files
@@ -54,13 +46,14 @@ ml_localize_dets_error_fn <- function(tag_f,
   
   ## Get files that have been localized
   files_localized <- list.files(path = paste0(output_folder,
-                                              "/",
+                                              "/ml_localized/",
                                               tag_f,
                                               "/"),
                                 ".csv.gz")
   
   ## Files to localize
   files_2_localize <- paste0(output_folder,
+                             "/ml_localized/",
                              tag_f,
                              "/",
                              files_prep[!(files_prep %in% files_localized)])
@@ -251,7 +244,7 @@ ml_localize_dets_error_fn <- function(tag_f,
         ## Save as separate file
         readr::write_csv(tag_loc_est,
                          paste0(output_folder, 
-                                "/",
+                                "/ml_localized/",
                                 tag_f,
                                 "/",
                                 tag_f_date,
@@ -260,7 +253,7 @@ ml_localize_dets_error_fn <- function(tag_f,
         cat("\n Finished tag:", tag_f, "- date:", tag_f_date, "-", length(unique(dets_p$t_ind)), "intervals localized", 
             "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n")
         
-        
+
       } else {
         
         cat("\n No intervals to localize, skipped file")

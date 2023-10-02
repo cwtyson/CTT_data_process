@@ -15,9 +15,10 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
   ## Prepare each tag
   collect_raw_data_fn(db_name = db_name,
                       db_password = db_password,
-                      output_folder = output_folder,
                       tag_folder = tag_folder,
                       node_folder = node_folder,
+                      grid_points_folder = grid_points_folder,
+                      output_folder = output_folder,
                       tag_f = tag_f,
                       tz = tz)
   
@@ -42,7 +43,6 @@ ml_update_localizations_fn <- function(tag_f = as.character(),
   ## Then localize
   ml_localize_dets_error_fn(tag_f = tag_f,
                             output_folder = output_folder,
-                            grid_points_folder = grid_points_folder,
                             log_dist_RSSI_mdl = log_dist_RSSI_mdl,
                             tz = tz,
                             crs = crs,

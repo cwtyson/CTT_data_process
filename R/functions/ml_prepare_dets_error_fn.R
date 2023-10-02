@@ -177,9 +177,12 @@ ml_prepare_dets_error_fn <- function(tag_f,
             dplyr::mutate(date_round = lubridate::floor_date(dt_r, unit = "day"))
           
           ## Create directory if needed
-          if(!dir.exists(paste0(output_folder, "/",tag_f))){
+          if(!dir.exists(paste0(output_folder, "/ml_prepared/",tag_f))){
             
-            dir.create(paste0(output_folder,"/", tag_f))  
+            suppressWarnings(dir.create(paste0(output_folder,"/ml_prepared")))
+            
+            dir.create(paste0(output_folder,"/ml_prepared/", tag_f))
+            }  
             
             ## Split based on date round and save (not neecessary to use this approach, but keeping for now)
             dt_r_dets_w %>% 
