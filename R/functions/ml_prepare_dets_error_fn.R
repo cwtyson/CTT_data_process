@@ -159,8 +159,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
           }
           
         }
-        
-        
+      
         ## If any to process, make wide:
         if(nrow(dt_r_dets_all)>0){
           
@@ -182,32 +181,31 @@ ml_prepare_dets_error_fn <- function(tag_f,
             suppressWarnings(dir.create(paste0(output_folder,"/ml_prepared")))
             
             dir.create(paste0(output_folder,"/ml_prepared/", tag_f))
-            }  
-            
-            ## Split based on date round and save (not neecessary to use this approach, but keeping for now)
-            dt_r_dets_w %>% 
-              dplyr::group_by(date_round) %>% 
-              dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
-                                                       "/",
-                                                       tag_f,
-                                                       "/",
-                                                       .y$date_round,
-                                                       ".csv.gz"),
-                                            row.names = F))
-          }
-        } 
-        
-        cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
-      }
+          }  
+          
+          ## Split based on date round and save (not neecessary to use this approach, but keeping for now)
+          dt_r_dets_w %>% 
+            dplyr::group_by(date_round) %>% 
+            dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
+                                                     "/",
+                                                     tag_f,
+                                                     "/",
+                                                     .y$date_round,
+                                                     ".csv.gz"),
+                                          row.names = F))
+        }
+      } 
+      
+      cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
     }
-    # ## End progress bar
-    close(pb)
-    
-    cat("############ \n",
-        "Finished preparing tag: ", tag_f," - days prepared: ", length(days), "\n",
-        "############ \n", sep = "")
-    
-    
   }
+  # ## End progress bar
+  close(pb)
+  
+  cat("############ \n",
+      "Finished preparing tag: ", tag_f," - days prepared: ", length(days), "\n",
+      "############ \n", sep = "")
   
 }
+
+
