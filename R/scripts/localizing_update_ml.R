@@ -43,7 +43,7 @@ foreach(tag_f=tags,.packages=c("tidyverse","lubridate","readr","geosphere"),
     output_folder =   "/Users/tyson/Documents/academia/research/zebby_tracking/data/2023/localizations/",
     
     ## Location of log-linear model RSSI~distance output
-    log_dist_RSSI_mdl = "./R/data/RSSI_log_dist_model_zebby.RDS",
+    log_dist_RSSI_mdl = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/",
     
     ## Time zone
     tz = "Australia/Broken_Hill",
