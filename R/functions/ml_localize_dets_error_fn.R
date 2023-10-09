@@ -1,4 +1,4 @@
-ml_localize_dets_error_fn <- function(tag_f,
+ml_localize_dets_error_fn <- function(band_f,
                                       output_folder,
                                       node_folder,
                                       grid_points_folder,
@@ -8,7 +8,7 @@ ml_localize_dets_error_fn <- function(tag_f,
                                       reps = reps){
   
   cat("############ \n",
-      "Starting localizing tag: ", tag_f, "\n",
+      "Starting localizing tag: ", band_f, "\n",
       "############ \n", sep = "")
   
   ## Read in model and convert to table
@@ -31,30 +31,30 @@ ml_localize_dets_error_fn <- function(tag_f,
                                        sf::st_drop_geometry())
   
   ## Create directory if needed
-  if(!dir.exists(paste0(output_folder,"/ml_localized/", tag_f))){
+  if(!dir.exists(paste0(output_folder,"/ml_localized/", band_f))){
     
     suppressWarnings(dir.create(paste0(output_folder,"/ml_localized")))
-    dir.create(paste0(output_folder,"/ml_localized/", tag_f))  
+    dir.create(paste0(output_folder,"/ml_localized/", band_f))  
   }
   
   ## Prepared files
   files_prep <- list.files(path = paste0(output_folder,
                                          "/",
-                                         tag_f,
+                                         band_f,
                                          "/"),
                            ".csv.gz")
   
   ## Get files that have been localized
   files_localized <- list.files(path = paste0(output_folder,
                                               "/ml_localized/",
-                                              tag_f,
+                                              band_f,
                                               "/"),
                                 ".csv.gz")
   
   ## Files to localize
   files_2_localize <- paste0(output_folder,
                              "/ml_localized/",
-                             tag_f,
+                             band_f,
                              "/",
                              files_prep[!(files_prep %in% files_localized)])
   
@@ -72,7 +72,7 @@ ml_localize_dets_error_fn <- function(tag_f,
       # file <- files_2_localize[1]
       
       ## Get current date
-      tag_f_date <- stringi::stri_sub(gsub(".csv.gz","",file),-10)
+      band_f_date <- stringi::stri_sub(gsub(".csv.gz","",file),-10)
       
       ## Progress bar
       Sys.sleep(0.1)
@@ -110,7 +110,7 @@ ml_localize_dets_error_fn <- function(tag_f,
       ## If any:
       if(nrow(dets_p) > 0){
         
-        cat("\n Starting tag:", tag_f, "- date:", tag_f_date, "- intervals to localize:", length(unique(dets_p$t_ind)), "\n")
+        cat("\n Starting tag:", band_f, "- date:", band_f_date, "- intervals to localize:", length(unique(dets_p$t_ind)), "\n")
         
         ## Starting time
         start_time <- Sys.time()
@@ -217,7 +217,7 @@ ml_localize_dets_error_fn <- function(tag_f,
               theta <- theta - 90 # angle from y-axis in degrees
               
               ## Combine estimated locations with summary information
-              tag_int_loc_est <- data.frame(tag = tag_f,
+              tag_int_loc_est <- data.frame(tag = band_f,
                                             dt_r = dets_p_int$dt_r[1],
                                             n_gp = dets_p_int$n_gp[1],
                                             mean_RSSI = mean(dets_p_int$mean_rssi),
@@ -245,12 +245,12 @@ ml_localize_dets_error_fn <- function(tag_f,
         readr::write_csv(tag_loc_est,
                          paste0(output_folder, 
                                 "/ml_localized/",
-                                tag_f,
+                                band_f,
                                 "/",
-                                tag_f_date,
+                                band_f_date,
                                 ".csv.gz"))
         
-        cat("\n Finished tag:", tag_f, "- date:", tag_f_date, "-", length(unique(dets_p$t_ind)), "intervals localized", 
+        cat("\n Finished tag:", band_f, "- date:", band_f_date, "-", length(unique(dets_p$t_ind)), "intervals localized", 
             "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n")
         
 
@@ -265,7 +265,7 @@ ml_localize_dets_error_fn <- function(tag_f,
   } else{
     
     cat("############ \n",
-        "Finished localizing tag: ", tag_f, "\n",
+        "Finished localizing tag: ", band_f, "\n",
         "############ \n", sep = "")
     
   }
@@ -274,7 +274,7 @@ ml_localize_dets_error_fn <- function(tag_f,
   close(pb2)
   
   cat("############ \n",
-      "Finished localizing tag: ", tag_f, "\n",
+      "Finished localizing tag: ", band_f, "\n",
       "############ \n", sep = "")
   
   

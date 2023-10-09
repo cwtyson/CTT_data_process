@@ -5,11 +5,11 @@ collect_raw_data_fn <- function(db_name = db_name,
                                 tag_folder = tag_folder,
                                 node_folder = node_folder,
                                 grid_points_folder = grid_points_folder,
-                                tag_f = tag_f,
+                                band_f = band_f,
                                 tz = tz){
   
   cat("############ \n",
-      "Starting to collecting raw data for tag: ", tag_f, "\n",
+      "Starting to collecting raw data for band: ", band_f, "\n",
       "############ \n", sep = "")
   
   
@@ -19,7 +19,7 @@ collect_raw_data_fn <- function(db_name = db_name,
                          password = db_password)
   
   ## Get most recently prepared data file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"/ml_prepared/",tag_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
+  mrdf <- rev(list.files(paste0(output_folder,"/ml_prepared/",band_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
   
   ## Get date time to filter by
   if(!is.na(mrdf)){
@@ -41,24 +41,37 @@ collect_raw_data_fn <- function(db_name = db_name,
   tag_times <- suppressWarnings(readxl::read_excel(paste0(tag_log_mr))  %>%
                                   janitor::clean_names() %>%
                                   dplyr::transmute(tag = gsub("NA",NA, tag),
-                                                   tag_start_dt = lubridate::ymd_hm(paste(date, format(lubridate::ymd_hms(time), "%H:%M")),
-                                                                                    tz = "Australia/Broken_Hill"),
-                                                   tag_end_dt = lubridate::ymd_hm(paste(end_date, format(lubridate::ymd_hms("1200"), "%H:%M")),
-                                                                                  tz = "Australia/Broken_Hill"),
-                                                   sex,
-                                                   group = caught_together,
-                                                   antenna = antanne_type)  %>%
-                                  dplyr::filter(tag == tag_f) %>% 
-                                  dplyr::select(tag_start_dt,
+                                                   bird_band,
+                                                   tag_start_dt = lubridate::parse_date_time(paste(date, time), 
+                                                                                             orders = c("%d-%m-%y %H:%M",
+                                                                                                        "%Y-%m-%d %H:%M"),
+                                                                                             tz = tz),
+                                                   tag_end_dt = lubridate::parse_date_time(paste(tag_removal_date, tag_removal_time), 
+                                                                                           orders = c("%d-%m-%y %H:%M",
+                                                                                                      "%Y-%m-%d %H:%M"),
+                                                                                           tz = tz))  %>%
+                                  dplyr::filter(bird_band == band_f) %>%
+                                  dplyr::select(bird_band,
+                                                tag,
+                                                tag_start_dt,
                                                 tag_end_dt) %>% 
-                                  dplyr::mutate(tag_end_dt = if_else(is.na(tag_end_dt), Sys.Date(), tag_end_dt)))
+                                  dplyr::mutate(tag_end_dt = if_else(is.na(tag_end_dt), Sys.time(), tag_end_dt)))
+  
   ## Time filters
-  tag_start_dt <- tag_times$tag_start_dt
-  tag_end_dt <- tag_times$tag_end_dt
+  tag_start_dt <- min(tag_times$tag_start_dt)
+  tag_end_dt <- max(tag_times$tag_end_dt)
+  
+  ## Tag(s) based on focal bands
+  tags_f <- unique(tag_times$tag)
   
   ## Read in detections from database
   dets_f <- dplyr::tbl(conn, from = "raw") %>%
-    dplyr::filter(tag_id == tag_f) %>%
+    
+    ## Keep focal tag(s)
+    dplyr::filter(tag_id %in% tags_f) %>%
+    
+    ## Remove detections before/after removal times 
+    ## TODO: Update removal times to interval to account for period between deployments
     dplyr::filter(time > tag_start_dt) %>%
     dplyr::filter(time  <= tag_end_dt) %>%
     dplyr::filter(time >= mrd) %>%
@@ -76,9 +89,9 @@ collect_raw_data_fn <- function(db_name = db_name,
     
     ## Read in tag log and reformat
     node_codes_mr <- sort(list.files(paste0(node_folder),
-                                  full.names = TRUE,
-                                  pattern = "node_codes"),
-                       decreasing = TRUE)[1]
+                                     full.names = TRUE,
+                                     pattern = "node_codes"),
+                          decreasing = TRUE)[1]
     
     
     ## Read in node codes
@@ -120,6 +133,29 @@ collect_raw_data_fn <- function(db_name = db_name,
       dplyr::arrange(tag,
                      date_time) %>%
       dplyr::select(grid_point,
+                    tag,
+                    date_time,
+                    rssi) %>%
+      data.frame()
+    
+    ## Associate tag with correct band Convert to data.table and do a roiling join.
+    tag_log <- tag_log %>% 
+      rename(date_time = tag_start_time)
+    tag_log <- data.table::data.table(tag_log, key = c("tag", "date_time"))
+    dets_f1 <- data.table::data.table(dets_f1, key = c("tag", "date_time"))
+    
+    ## Rolling join node log to node records
+    dets_f1 <- tag_log[dets_f1, roll = Inf]
+    
+    ## Remove tags without a band and where detection time is after removal time
+    dets_f2 <- dets_f1 %>%
+      dplyr::filter(!is.na(bird_band),
+                    (date_time < tag_removal_time | is.na(tag_removal_time))) %>%
+      
+      dplyr::arrange(tag,
+                     date_time) %>%
+      dplyr::select(grid_point,
+                    bird_band,
                     tag,
                     date_time,
                     rssi) %>%

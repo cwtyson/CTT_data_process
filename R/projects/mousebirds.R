@@ -11,24 +11,23 @@ source("./R/functions/ml_localize_dets_error_fn.R")
 cl <- parallel::makeForkCluster(8, outfile = "")
 doParallel::registerDoParallel(cl)
 
-## Define the tags to be processed- should be a vector
-tags <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/tag_logs/tag_log_20230909.xlsx") %>% 
-  mutate(year = format(Date,"%Y")) %>% 
-  filter(year == "2023") %>% 
-  select(tag = Tag) %>% 
-  filter(tag != "NA") %>% 
-  pull(tag)
+## Define the bird bands to be processed- should be a vector
+bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/tag_logs/tag_log_20230909.xlsx") %>% 
+  filter(bird_band %in% c("4A94985")) %>% 
+  pull(bird_band) %>% 
+  unique()
 
-foreach(tag_f=tags,.packages=c("tidyverse","lubridate","readr","geosphere"),
+
+foreach(band_f = bird_bands,.packages=c("tidyverse","lubridate","readr","geosphere"),
         .verbose = TRUE) %dopar%
   { ml_update_localizations_fn(
     
     ## Database credentials
-    db_name = "tyson",
+    db_name = "postgres",
     db_password = "time00",
     
     ## Tag value is defined in foreach function
-    tag_f = tag_f,
+    band_f = band_f,
     
     ## Folder where node logs are saved
     node_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/node_logs/",

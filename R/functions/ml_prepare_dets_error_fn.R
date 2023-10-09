@@ -12,7 +12,7 @@
 #' @param lag The increment over which to calculate the moving window given as a negative value, e.g. '-30 seconds'.
 #' @param dist_filter The distance filter (in meters) for retaining nodes around the node with the strongest value in each window.
 
-ml_prepare_dets_error_fn <- function(tag_f, 
+ml_prepare_dets_error_fn <- function(band_f, 
                                      dets_t, 
                                      grid_points,
                                      output_folder, 
@@ -31,7 +31,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
   ## Files that still need to be processed
   if(length(days) > 0){
     
-    cat("\n Starting tag:", tag_f, "- days to prepare:", length(days), "\n")
+    cat("\n Starting tag:", band_f, "- days to prepare:", length(days), "\n")
     
     for(day_f in days){
       
@@ -49,7 +49,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
       ## If any to prepare
       if(nrow(dets_2_prepare) > 0){
         
-        cat("\n Starting tag:", tag_f, "- day:", day_f, "- detections:", nrow(dets_2_prepare), "\n")
+        cat("\n Starting tag:", band_f, "- day:", day_f, "- detections:", nrow(dets_2_prepare), "\n")
         
         ## Prepare filtered records
         fdets_prep <- dets_2_prepare %>%
@@ -176,11 +176,11 @@ ml_prepare_dets_error_fn <- function(tag_f,
             dplyr::mutate(date_round = lubridate::floor_date(dt_r, unit = "day"))
           
           ## Create directory if needed
-          if(!dir.exists(paste0(output_folder, "/ml_prepared/",tag_f))){
+          if(!dir.exists(paste0(output_folder, "/ml_prepared/",band_f))){
             
             suppressWarnings(dir.create(paste0(output_folder,"/ml_prepared")))
             
-            dir.create(paste0(output_folder,"/ml_prepared/", tag_f))
+            dir.create(paste0(output_folder,"/ml_prepared/", band_f))
           }  
           
           ## Split based on date round and save (not neecessary to use this approach, but keeping for now)
@@ -188,7 +188,7 @@ ml_prepare_dets_error_fn <- function(tag_f,
             dplyr::group_by(date_round) %>% 
             dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
                                                      "/",
-                                                     tag_f,
+                                                     band_f,
                                                      "/",
                                                      .y$date_round,
                                                      ".csv.gz"),
@@ -196,14 +196,14 @@ ml_prepare_dets_error_fn <- function(tag_f,
         }
       } 
       
-      cat("\n Finished tag:", tag_f, "- day:", day_f,"\n")
+      cat("\n Finished tag:", band_f, "- day:", day_f,"\n")
     }
   }
   # ## End progress bar
   close(pb)
   
   cat("############ \n",
-      "Finished preparing tag: ", tag_f," - days prepared: ", length(days), "\n",
+      "Finished preparing tag: ", band_f," - days prepared: ", length(days), "\n",
       "############ \n", sep = "")
   
 }
