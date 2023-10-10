@@ -4,42 +4,52 @@
 #' The dist_filter argument controls the distance filter that is used to retain nodes around the node with the strongest rssi value within each window. (Larger values increase the number of nodes retained.)
 #' 
 #' @param processed_dets_file The processed detection file 
-#' @param tags Tags to prepare. If NULL, then any tag with detections will be prepared.
-#' @param project 
+#' @param band_f Band to process
 #' @param output_folder The location where the prepared data should go. A new subdirectory called 'prepared_detections' will be created here if necessary as well as subdirectories for each tag.
 #' @param grid_point_file The grid point file with coordinates for each grid point.
 #' @param window The desired window within which to calculate the average tag rssi.
 #' @param lag The increment over which to calculate the moving window given as a negative value, e.g. '-30 seconds'.
 #' @param dist_filter The distance filter (in meters) for retaining nodes around the node with the strongest value in each window.
 
-ml_prepare_dets_error_fn <- function(band_f, 
-                                     dets_t, 
+ml_prepare_dets_error_fn <- function(dets_t, 
+                                     band_f,
                                      grid_points,
                                      output_folder, 
                                      tz,
-                                     project = as.character(),
                                      window = "30 secs",
                                      lag = "-15 secs",
                                      dist_filter = 305){
   
-  ## Get unique days 
-  days <- as.character(unique(dets_t$date))
+  ## Get unique days in raw data
+  raw_days <- unique(dets_t$date)
+  
+  ## Most recent day
+  mrd <- rev(sort(gsub(".csv.gz",
+                       "",
+                       list.files(paste0(output_folder,"/ml_prepared/", band_f),
+                                  recursive = T))))[1]
+  
+  ## If NA, then set to first raw day
+  mrd <- ifelse(is.na(mrd),min(raw_days),mrd)
+  
+  ## Keep any days greater than or equal to last day prepared
+  days2prepare <- as.character(raw_days[raw_days >= mrd])
   
   ## Set progress bar for preparing tags
-  pb <- txtProgressBar(min = 0, max = length(days), style = 3)
+  pb <- txtProgressBar(min = 0, max = length(days2prepare), style = 3)
   
-  ## Files that still need to be processed
-  if(length(days) > 0){
+  ## Files that still need to be prepared
+  if(length(days2prepare) > 0){
     
-    cat("\n Starting tag:", band_f, "- days to prepare:", length(days), "\n")
+    cat("\n Starting tag:", band_f, "- days to prepare:", length(days2prepare), "\n")
     
-    for(day_f in days){
+    for(day_f in days2prepare){
       
       ## Progress bar
       Sys.sleep(0.1)
-      setTxtProgressBar(pb, which(days == day_f))
+      setTxtProgressBar(pb, which(days2prepare == day_f))
       # 
-      # day_f = days[1]
+      # day_f = days2prepare[1]
       
       day_f_f <- as.Date(day_f, tz = tz)
       
@@ -64,7 +74,8 @@ ml_prepare_dets_error_fn <- function(band_f,
                                                       f = function(x) mean(x$rssi),
                                                       na_pad = FALSE)) %>% 
           dplyr::ungroup() %>% 
-          dplyr::select(tag,
+          dplyr::select(bird_band,
+                        tag,
                         grid_point,
                         date_time, 
                         dt_r,
@@ -89,7 +100,7 @@ ml_prepare_dets_error_fn <- function(band_f,
           dplyr::mutate(t_ind = cumsum(!duplicated(dt_r))) %>% 
           
           ## Rearrange
-          dplyr::select(tag, dt_r, t_ind, grid_point, mean_rssi_gp,dets,n_gp)
+          dplyr::select(bird_band,tag, dt_r, t_ind, grid_point, mean_rssi_gp,dets,n_gp)
         
         ## Grid point with max rssi for each window
         gp_max_rssi <- fdets_prep_sum %>% 
@@ -125,8 +136,8 @@ ml_prepare_dets_error_fn <- function(band_f,
               dplyr::filter(grid_point %in% interval_gps) 
             
             ## Get distance between nodes with detections during the point
-            n_dist <- raster::pointDistance(grid_points_df_f[,c("x", "y")], 
-                                            grid_points_df_f[,c("x", "y")], 
+            n_dist <- raster::pointDistance(grid_points_df_f[,c("gp_x", "gp_y")], 
+                                            grid_points_df_f[,c("gp_x", "gp_y")], 
                                             lonlat = F,
                                             allpairs = T)
             
@@ -159,7 +170,7 @@ ml_prepare_dets_error_fn <- function(band_f,
           }
           
         }
-      
+        
         ## If any to process, make wide:
         if(nrow(dt_r_dets_all)>0){
           
@@ -168,7 +179,7 @@ ml_prepare_dets_error_fn <- function(band_f,
             
             ## Get mean of filtered values
             dplyr::group_by(dt_r) %>% 
-            # dplyr::select(-node) %>% 
+            dplyr::select(-dets) %>%
             data.frame() %>% 
             tidyr::pivot_wider(names_from = "grid_point",
                                values_from  = "mean_rssi_gp") %>% 
@@ -187,7 +198,7 @@ ml_prepare_dets_error_fn <- function(band_f,
           dt_r_dets_w %>% 
             dplyr::group_by(date_round) %>% 
             dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
-                                                     "/",
+                                                     "/ml_prepared/",
                                                      band_f,
                                                      "/",
                                                      .y$date_round,
@@ -203,7 +214,7 @@ ml_prepare_dets_error_fn <- function(band_f,
   close(pb)
   
   cat("############ \n",
-      "Finished preparing tag: ", band_f," - days prepared: ", length(days), "\n",
+      "Finished preparing tag: ", band_f," - days prepared: ", length(days2prepare), "\n",
       "############ \n", sep = "")
   
 }

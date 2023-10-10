@@ -1,7 +1,6 @@
 ml_localize_dets_error_fn <- function(band_f,
                                       output_folder,
-                                      node_folder,
-                                      grid_points_folder,
+                                      grid_points,
                                       log_dist_RSSI_mdl,
                                       tz = tz,
                                       crs = crs,
@@ -13,9 +12,9 @@ ml_localize_dets_error_fn <- function(band_f,
   
   ## Read in model and convert to table
   mdl_tab <- readRDS(log_dist_RSSI_mdl) %>% 
-    broom::augment(newdata = data.frame(rssi = seq(-25, -115, by = -1)),
+    broom::augment(newdata = data.frame(RSSI = seq(-25, -115, by = -1)),
                    se_fit = TRUE) %>% 
-    dplyr::select(mean_rssi = rssi,
+    dplyr::select(mean_rssi = RSSI,
                   mean = .fitted,
                   sd = .se.fit) %>% 
     dplyr::distinct(mean_rssi,.keep_all = T)
@@ -39,24 +38,22 @@ ml_localize_dets_error_fn <- function(band_f,
   
   ## Prepared files
   files_prep <- list.files(path = paste0(output_folder,
-                                         "/",
+                                         "/ml_prepared/",
                                          band_f,
                                          "/"),
-                           ".csv.gz")
+                           ".csv.gz",
+                           full.names = T)
   
   ## Get files that have been localized
   files_localized <- list.files(path = paste0(output_folder,
                                               "/ml_localized/",
                                               band_f,
                                               "/"),
-                                ".csv.gz")
+                                ".csv.gz",
+                                full.names = T)
   
   ## Files to localize
-  files_2_localize <- paste0(output_folder,
-                             "/ml_localized/",
-                             band_f,
-                             "/",
-                             files_prep[!(files_prep %in% files_localized)])
+  files_2_localize <-  files_prep[!(files_prep %in% files_localized)]
   
   
   ## If any files
@@ -80,14 +77,12 @@ ml_localize_dets_error_fn <- function(band_f,
       
       ## Get detections
       dets <- readr::read_csv(file,
-                              show_col_types = FALSE,
-                              guess_max = 10000)
+                              col_types = paste0("ccT", paste(rep('d', 200), collapse='')),
+                              show_col_types = FALSE)
       
       
       ## Process for nls 
       dets_p <- dets %>% 
-        
-        dplyr::select(-dets) %>% 
         
         dplyr::group_by(dt_r) %>% 
         tidyr::pivot_longer(cols = matches("^gp|^Pp"),
@@ -119,7 +114,7 @@ ml_localize_dets_error_fn <- function(band_f,
         tag_loc_est <- data.frame()
         
         ## Set progress bar
-        pb_ints <- txtProgressBar(min = 0, max = 100, style = 3)
+        pb_ints <- txtProgressBar(min = 0, max = length(unique(dets_p$t_ind)), style = 3)
         
         ## For each interval
         for(int in unique(dets_p$t_ind)){
@@ -175,7 +170,7 @@ ml_localize_dets_error_fn <- function(band_f,
                   data.frame() %>%
                   sf::st_as_sf(coords = c("x", "y")) %>%
                   sf::st_set_crs(4326) %>%
-                  sf::st_transform(crs) %>%
+                  sf::st_transform(crs = crs) %>%
                   dplyr::transmute(x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
                                    y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>%
                   sf::st_drop_geometry()
@@ -253,7 +248,7 @@ ml_localize_dets_error_fn <- function(band_f,
         cat("\n Finished tag:", band_f, "- date:", band_f_date, "-", length(unique(dets_p$t_ind)), "intervals localized", 
             "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n")
         
-
+        
       } else {
         
         cat("\n No intervals to localize, skipped file")
