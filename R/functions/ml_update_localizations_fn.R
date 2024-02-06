@@ -57,14 +57,15 @@ ml_update_localizations_fn <- function(band_f = as.character(),
                              output_folder = output_folder,
                              tz = tz)
     
-    # ## Then localize
-    # ml_localize_dets_error_fn(band_f = band_f,
-    #                           output_folder = output_folder,
-    #                           grid_points = grid_points,
-    #                           log_dist_RSSI_mdl = log_dist_RSSI_mdl,
-    #                           tz = tz,
-    #                           crs = crs,
-    #                           rep = reps)
+    ## Then localize
+    ml_localize_dets_error_fn_zebby(band_f = band_f,
+                                    output_folder = output_folder,
+                                    grid_points = grid_points,
+                                    log_dist_RSSI_mdl = log_dist_RSSI_mdl,
+                                    tz = tz,
+                                    crs = crs,
+                                    rep = reps,
+                                    dist_cutoff = 200)
     
   } else{
     

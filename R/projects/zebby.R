@@ -4,11 +4,11 @@ library(dplyr)
 library(geosphere)
 
 ## Source functions
-source("./R/functions/collect_raw_data_fn.R")
+source("./R/functions/collect_raw_data_fn_zebby.R")
 source("./R/functions/ml_update_localizations_fn.R")
 source("./R/functions/ml_prepare_dets_error_fn.R")
 source("./R/functions/ml_localize_dets_error_fn.R")
-source("./R/functions/get_grid_points_fn.R")
+source("./R/functions/get_grid_points_fn_zebby.R")
 
 cl <- parallel::makeForkCluster(8, outfile = "")
 doParallel::registerDoParallel(cl)
