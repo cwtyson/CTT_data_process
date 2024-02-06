@@ -26,13 +26,13 @@ collect_raw_data_fn <- function(db_name = db_name,
   
   ## Read in most recent tag log 
   tag_log <- suppressWarnings(readxl::read_excel(paste0(tag_log_mr))  %>%
-                                janitor::clean_names()) %>%
+                                janitor::clean_names() %>%
                                 dplyr::filter(bird_band == band_f) %>%
                                 dplyr::transmute(tag = gsub("NA",NA, tag),
                                                  bird_band,
-                                                 tag_start_time = lubridate::mdy_hm(paste(date, time),
+                                                 tag_start_time = lubridate::dmy_hm(paste(date, time),
                                                                                     tz = tz),
-                                                 tag_removal_time = lubridate::mdy_hm(paste(end_date, end_time), 
+                                                 tag_removal_time = lubridate::dmy_hm(paste(end_date, end_time), 
                                                                                       tz = tz))  %>%
                                 dplyr::select(bird_band,
                                               tag,
