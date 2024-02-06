@@ -13,17 +13,38 @@ ml_update_localizations_fn <- function(band_f = as.character(),
   
   
   ## Prepare each tag
-  dets_t <- collect_raw_data_fn(band_f = band_f,
-                                db_name = db_name,
-                                db_password = db_password,
-                                tag_folder = tag_folder,
-                                node_folder = node_folder,
-                                output_folder = output_folder,
-                                tz = tz,
-                                crs=crs)
+  collect_raw_data_fn(band_f = band_f,
+                      db_name = db_name,
+                      db_password = db_password,
+                      tag_folder = tag_folder,
+                      node_folder = node_folder,
+                      output_folder = output_folder,
+                      tz = tz)
+  
+  ## Read in raw data
+  dets_t <- readRDS(paste0(output_folder,"/raw_detections/data/",band_f,".RDS"))
+  
+  ## Get most recently prepared data file (if it exists)
+  mrdf <- rev(list.files(paste0(output_folder,"/ml_prepared/",band_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
+  
+  ## Get date time to filter by
+  if(!is.na(mrdf)){
+    mrd <- suppressWarnings(readr::read_csv(mrdf,show_col_types = FALSE) %>%
+                              dplyr::pull(dt_r) %>%
+                              max())
+    mrd <- lubridate::with_tz(mrd, tz = tz)
+  } else{
+    mrd <- as.Date("2021-08-01")
+  }
+  
+  ## Filter detections based on prepared data
+  dets_t <- dets_t %>% 
+    dplyr::filter(date_time >= mrd)
+  
   
   ## Get grid points
-  grid_points <- get_grid_points_fn(grid_points_folder)
+  grid_points <- get_grid_points_fn(grid_points_folder,
+                                    crs)
   
   
   ## If new data to prepare:
@@ -36,14 +57,14 @@ ml_update_localizations_fn <- function(band_f = as.character(),
                              output_folder = output_folder,
                              tz = tz)
     
-    ## Then localize
-    ml_localize_dets_error_fn(band_f = band_f,
-                              output_folder = output_folder,
-                              grid_points = grid_points,
-                              log_dist_RSSI_mdl = log_dist_RSSI_mdl,
-                              tz = tz,
-                              crs = crs,
-                              rep = reps)
+    # ## Then localize
+    # ml_localize_dets_error_fn(band_f = band_f,
+    #                           output_folder = output_folder,
+    #                           grid_points = grid_points,
+    #                           log_dist_RSSI_mdl = log_dist_RSSI_mdl,
+    #                           tz = tz,
+    #                           crs = crs,
+    #                           rep = reps)
     
   } else{
     
