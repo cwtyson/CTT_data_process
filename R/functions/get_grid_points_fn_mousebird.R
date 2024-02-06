@@ -31,12 +31,6 @@ get_grid_points_fn <- function(grid_points_folder,
     distinct(grid_point,
              .keep_all = T)
   
-  ## Rename grid points by removing "Gp "
-  grid_points$grid_point <- gsub(pattern = "Gp ",
-                                 replacement = "",
-                                 grid_points$grid_point)
-  
-  
   return(grid_points)
 }
 
