@@ -14,48 +14,52 @@ cl <- parallel::makeForkCluster(8, outfile = "")
 doParallel::registerDoParallel(cl)
 
 ## Define the bird bands to be processed- should be a vector
-bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/tag_logs/tag_log_20230909.xlsx") %>% 
-  mutate(year = format(lubridate::dmy(date), "%Y")) %>% 
+bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/zebby_tag_log_20231128.xlsx") %>% 
+  janitor::clean_names() %>% 
+  mutate(year = format(lubridate::mdy(date), "%Y")) %>% 
   filter(year == "2023") %>% 
-  filter(species == "SPMO" ) %>% 
-  pull(bird_band) %>% 
+  filter(antanne_type == "Steel") %>% 
+  filter(species == "ZF" ) %>% 
+  pull(band) %>% 
   unique()
 
-bird_bands = bird_bands[1]
-
+## Run in terminal as:
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/zebby.R
 
 foreach(band_f = bird_bands,
         .packages=c("tidyverse","lubridate","readr","geosphere"),
-        .verbose = FALSE) %dopar%
+        .verbose = TRUE) %dopar%
   { ml_update_localizations_fn(
     
     ## Database credentials
-    db_name = "mousebird",
+    db_name = "zebbie",
+    
     db_password = "time00",
     
     ## Tag value is defined in foreach function
     band_f = band_f,
     
     ## Folder where node logs are saved
-    node_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/node_logs/",
+    node_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/nodes/",
     
     ## Folder where tag logs are saved
-    tag_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/tag_logs/",
+    tag_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/",
     
     ## Folder where grid point files are saved
-    grid_points_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/grid_points/",
+    grid_points_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/grid_points/",
     
     ## Folder where the data should be saved. A new folder will be created for each tag
     output_folder =   "/Volumes/data_bases/zebby/processed_detections/",
     
     ## Location of log-linear model RSSI~distance output
-    log_dist_RSSI_mdl = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/RSSI_log_distance_lm_Eswatini.RDS",
+    log_dist_RSSI_mdl = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/Other computers/My MacBook Pro (1)/Documents/academia/institutions/WUR/research/australia/zebby_tracking/data/calibration/rssi_dist_curve/2023/RSSI_log_dist_model_2023.RDS",
     
     ## Time zone
-    tz = "Africa/Mbabane",
+    tz = "Australia/Broken_Hill",
     
     ## Projected CRS to use
-    crs = 22291,
+    crs = 3308,
     
     ## Number of repetitions for resampling localization to estimate error
     reps = 100) }
+
