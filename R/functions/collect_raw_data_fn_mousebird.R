@@ -109,7 +109,6 @@ collect_raw_data_fn <- function(db_name = db_name,
     node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
                                    dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
                                                  removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
-                                   filter(location=="gp") %>% 
                                    ## Join node node
                                    dplyr::left_join(node_codes,
                                                     by  = "node_number") %>%
