@@ -6,8 +6,7 @@ collect_raw_data_fn <- function(db_name = db_name,
                                 node_folder = node_folder,
                                 grid_points_folder = grid_points_folder,
                                 band_f = band_f,
-                                tz = tz,
-                                crs=crs){
+                                tz = tz){
   
   cat("############ \n",
       "Collecting raw data for band: ", band_f, "\n",
@@ -19,19 +18,6 @@ collect_raw_data_fn <- function(db_name = db_name,
                          dbname = db_name,
                          password = db_password)
   
-  ## Get most recently prepared data file (if it exists)
-  mrdf <- rev(list.files(paste0(output_folder,"/ml_prepared/",band_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
-  
-  ## Get date time to filter by
-  if(!is.na(mrdf)){
-    mrd <- suppressWarnings(readr::read_csv(mrdf,show_col_types = FALSE) %>%
-                              dplyr::pull(dt_r) %>%
-                              max())
-    mrd <- lubridate::with_tz(mrd, tz = tz)
-  } else{
-    mrd <- as.Date("2021-08-01")
-  }
-  
   ## Read in tag log and reformat
   tag_log_mr <- sort(list.files(paste0(tag_folder),
                                 full.names = TRUE,
@@ -40,18 +26,14 @@ collect_raw_data_fn <- function(db_name = db_name,
   
   ## Read in most recent tag log 
   tag_log <- suppressWarnings(readxl::read_excel(paste0(tag_log_mr))  %>%
-                                janitor::clean_names() %>%
+                                janitor::clean_names()) %>%
+                                dplyr::filter(bird_band == band_f) %>%
                                 dplyr::transmute(tag = gsub("NA",NA, tag),
                                                  bird_band,
-                                                 tag_start_time = lubridate::parse_date_time(paste(date, time), 
-                                                                                             orders = c("%d-%m-%y %H:%M",
-                                                                                                        "%Y-%m-%d %H:%M"),
-                                                                                             tz = tz),
-                                                 tag_removal_time = lubridate::parse_date_time(paste(tag_removal_date, tag_removal_time), 
-                                                                                               orders = c("%d-%m-%y %H:%M",
-                                                                                                          "%Y-%m-%d %H:%M"),
-                                                                                               tz = tz))  %>%
-                                dplyr::filter(bird_band == band_f) %>%
+                                                 tag_start_time = lubridate::mdy_hm(paste(date, time),
+                                                                                    tz = tz),
+                                                 tag_removal_time = lubridate::mdy_hm(paste(end_date, end_time), 
+                                                                                      tz = tz))  %>%
                                 dplyr::select(bird_band,
                                               tag,
                                               tag_start_time,
@@ -71,10 +53,7 @@ collect_raw_data_fn <- function(db_name = db_name,
     ## Keep focal tag(s)
     dplyr::filter(tag_id %in% tags_f) %>%
     
-    ## Keep only data on or after most recently processed day
-    dplyr::filter(time >= mrd) %>%
-    
-    ## Remove detections before/after removal times 
+    ## Keep detections after deployment time and before removal times 
     ## TODO: Update removal times to interval to account for period between deployments
     dplyr::filter(time > tag_start_dt) %>%
     dplyr::filter(time  <= tag_end_dt) %>%
@@ -89,13 +68,20 @@ collect_raw_data_fn <- function(db_name = db_name,
                     date_time,
                     .keep_all = T)
   
+  
+  # ## Check raw data
+  # ggplot(dets_raw) +
+  #   geom_point(aes(x=date_time,
+  #                  y=node,
+  #                  color = rssi))
+  # 
   cat("############ \n",
       "Finished collecting raw data for band: ", band_f, "\n",
       "############ \n", 
       sep = "")
   
   
-  if(nrow(dets_f) > 0){
+  if(nrow(dets_raw) > 0){
     
     cat("############ \n",
         "Cleaning raw data for band: ", band_f, "\n",
@@ -123,6 +109,7 @@ collect_raw_data_fn <- function(db_name = db_name,
     node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
                                    dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
                                                  removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
+                                   filter(location=="gp") %>% 
                                    ## Join node node
                                    dplyr::left_join(node_codes,
                                                     by  = "node_number") %>%
@@ -131,6 +118,7 @@ collect_raw_data_fn <- function(db_name = db_name,
                                                  grid_point,
                                                  date_time = deployment_time,
                                                  removal_time))
+    
     ## Convert to data.table
     nodes <- data.table::data.table(node_log, key = c("node", "date_time"))
     dets_f <- data.table::data.table(dets_raw, key = c("node", "date_time"))
@@ -185,18 +173,37 @@ collect_raw_data_fn <- function(db_name = db_name,
       dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day"),
                     grid_point = grid_point)
     
-    ggplot(dets_t) +
-      geom_point(aes(x=date,
-                     y=grid_point))
+    ## Summarize filtered data by day by grid point
+    dets_sum <- dets_t %>% 
+      dplyr::group_by(date, grid_point) %>% 
+      dplyr::summarise(dets = n(),
+                       mean_rssi = mean(rssi),
+                       .groups = "keep")
+    
+    ## Check filtered data
+    dets_sum_plot <- ggplot2::ggplot(dets_sum) +
+      ggplot2::geom_point(aes(x=date,
+                              y=grid_point,
+                              color = mean_rssi,
+                              size = dets)) +
+      ggplot2::scale_colour_gradientn(colours = wesanderson::wes_palette("Zissou1", 100, type = "continuous"), name = "rssi") +
+      ggplot2::theme_minimal()
+    
+    
+    ggplot2::ggsave(plot = dets_sum_plot,
+                    filename = paste0(output_folder,"/raw_detections/plots/", band_f,"_detection_summary.jpg"),
+                    scale = 2)
+    
+    ## Save raw data
+    saveRDS(dets_t,
+            paste0(output_folder,"/raw_detections/data/",band_f,".RDS")) 
+    
     
     cat("############ \n",
         "Finished cleaning raw data for band: ", band_f, "\n",
         "############ \n", 
         sep = "")
     
-    return(dets_t)
-    
-
     
   } else{
     
