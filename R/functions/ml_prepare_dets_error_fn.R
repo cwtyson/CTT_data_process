@@ -27,10 +27,13 @@ ml_prepare_dets_error_fn <- function(dets_t,
   mrd <- rev(sort(gsub(".csv.gz",
                        "",
                        list.files(paste0(output_folder,"/ml_prepared/", band_f),
-                                  recursive = T))))[1]
+                                  recursive = T,
+                                  pattern = ".csv.gz"))))[1]
   
   ## If NA, then set to first raw day
-  mrd <- ifelse(is.na(mrd),min(raw_days),mrd)
+  if(is.na(mrd)){
+    mrd<-min(raw_days)
+  }
   
   ## Keep any days greater than or equal to last day prepared
   days2prepare <- as.character(raw_days[raw_days >= mrd])
