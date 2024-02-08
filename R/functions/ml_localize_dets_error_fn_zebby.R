@@ -118,9 +118,9 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
         ## Empty df
         tag_loc_est <- data.frame()
         
-        ## Set progress bar
-        pb_ints <- txtProgressBar(min = 0, max = length(unique(dets_p$t_ind)), style = 3)
-        
+        # ## Set progress bar
+        # pb_ints <- txtProgressBar(min = 0, max = length(unique(dets_p$t_ind)), style = 3)
+        # 
         ## Empty lists
         tag_loc_est_list <- list()
         cov_list <- list()
@@ -131,10 +131,10 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
           
           # int = unique(dets$t_ind)[1]
           
-          ## Progress bar
-          Sys.sleep(0.1)
-          setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
-          
+          # ## Progress bar
+          # Sys.sleep(0.1)
+          # setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
+          # 
           tryCatch(
             expr = {
               
@@ -235,19 +235,19 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
                        t_ind = dets_p_int$t_ind[1])
               
               
-              ## Plot
-              print(ggplot() +
-                      geom_point(data = ellipse_coords_proj, aes(x,y)) +
-                      # stat_ellipse(data = ellipse_coords_proj, aes(x,y),type = "norm") +
-                      ggforce::geom_ellipse(aes(x0=x_est,
-                                                y0=y_est,
-                                                a=semi_major,
-                                                b=semi_minor,
-                                                angle=orientation),
-                                            data = tag_int_loc_est,
-                                            color = "red") +
-                      theme_minimal() +
-                      geom_point(data=nodes_int,aes(x,y),color = "gold"))
+              # ## Plot
+              # print(ggplot() +
+              #         geom_point(data = ellipse_coords_proj, aes(x,y)) +
+              #         # stat_ellipse(data = ellipse_coords_proj, aes(x,y),type = "norm") +
+              #         ggforce::geom_ellipse(aes(x0=x_est,
+              #                                   y0=y_est,
+              #                                   a=semi_major,
+              #                                   b=semi_minor,
+              #                                   angle=orientation),
+              #                               data = tag_int_loc_est,
+              #                               color = "red") +
+              #         theme_minimal() +
+              #         geom_point(data=nodes_int,aes(x,y),color = "gold"))
               
               pe_df_list[int] <- list(pe_df_p)
               tag_loc_est_list[int] <- list(tag_int_loc_est)
@@ -277,7 +277,7 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
         #                         ".csv.gz"))
         
         ## Save lists as R data file
-        readr::write_csv(tag_loc_est,
+        saveRDS(tag_loc_est,
                          paste0(output_folder,
                                 "/ml_localized/",
                                 band_f,
