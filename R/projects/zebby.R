@@ -14,20 +14,20 @@ cl <- parallel::makeForkCluster(8, outfile = "")
 doParallel::registerDoParallel(cl)
 
 ## Define the bird bands to be processed- should be a vector
-bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/zebby_tag_log_20231128.xlsx") %>% 
+bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/zebby_tag_log_20240205.xlsx") %>% 
   janitor::clean_names() %>% 
   mutate(year = format(lubridate::mdy(date), "%Y")) %>% 
   filter(year == "2023") %>% 
   filter(antanne_type == "Steel") %>% 
   filter(species == "ZF" ) %>% 
-  pull(band) %>% 
+  pull(bird_band) %>% 
   unique()
 
 ## Run in terminal as:
 # OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/zebby.R
 
 foreach(band_f = bird_bands,
-        .packages=c("tidyverse","lubridate","readr","geosphere"),
+        # .packages=c("dplyr","lubridate","readr","geosphere"),
         .verbose = TRUE) %dopar%
   { ml_update_localizations_fn_zebby(
     
@@ -52,7 +52,7 @@ foreach(band_f = bird_bands,
     output_folder =   "/Volumes/data_bases/zebby/processed_detections/",
     
     ## Location of log-linear model RSSI~distance output
-    log_dist_RSSI_mdl = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/Other computers/My MacBook Pro (1)/Documents/academia/institutions/WUR/research/australia/zebby_tracking/data/calibration/rssi_dist_curve/2023/RSSI_log_dist_model_2023.RDS",
+    log_dist_RSSI_mdl = "/Volumes/data_bases/zebby/RSSI_log_dist_model_2023.RDS",
     
     ## Time zone
     tz = "Australia/Broken_Hill",

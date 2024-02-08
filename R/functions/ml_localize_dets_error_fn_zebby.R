@@ -95,6 +95,10 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
                             values_to = "mean_rssi") %>% 
         na.omit() %>% 
         
+        ## Recalculate number of nodes in each interval
+        dplyr::group_by(dt_r) %>% 
+        dplyr::mutate(n_gp = n()) %>% 
+        
         ## Remove any periods with fewer than 3 gps
         dplyr::filter(n_gp >= 3) %>%
         dplyr::ungroup() %>% 
@@ -129,7 +133,7 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
         ## For each interval
         for(int in unique(dets_p$t_ind)){
           
-          # int = unique(dets$t_ind)[1]
+          # int = unique(dets_p$t_ind)[1]
           
           # ## Progress bar
           # Sys.sleep(0.1)

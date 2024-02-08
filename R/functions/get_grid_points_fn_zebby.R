@@ -1,4 +1,4 @@
-get_grid_points_fn <- function(grid_points_folder,
+get_grid_points_fn_zebby <- function(grid_points_folder,
                                crs){
   
   

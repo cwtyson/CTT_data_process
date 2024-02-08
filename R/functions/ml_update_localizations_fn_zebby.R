@@ -43,7 +43,7 @@ ml_update_localizations_fn_zebby <- function(band_f = as.character(),
   # 
   
   ## Get grid points
-  grid_points <- get_grid_points_fn(grid_points_folder,
+  grid_points <- get_grid_points_fn_zebby(grid_points_folder,
                                     crs)
   
   
