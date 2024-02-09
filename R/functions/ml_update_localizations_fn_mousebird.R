@@ -1,5 +1,5 @@
 ## Update localizations using multilateration
-ml_update_localizations_fn_zebby <- function(band_f = as.character(),
+ml_update_localizations_fn_mousebird <- function(band_f = as.character(),
                                              db_name = as.character(),
                                              db_password = as.character(),
                                              tag_folder = as.character(),
@@ -8,6 +8,7 @@ ml_update_localizations_fn_zebby <- function(band_f = as.character(),
                                              log_dist_RSSI_mdl = as.character(),
                                              grid_points_folder = as.character(), 
                                              tz = "UTC",
+                                             ss_filter = as.POSIXct(),
                                              crs = as.numeric(),
                                              reps = as.numeric()){
   
@@ -22,7 +23,7 @@ ml_update_localizations_fn_zebby <- function(band_f = as.character(),
   #                           tz = tz)
   # 
   # ## Read in raw data
-  # dets_t <- readRDS(paste0(output_folder,"/raw_detections/data/",band_f,".RDS"))w
+  # dets_t <- readRDS(paste0(output_folder,"/raw_detections/data/",band_f,".RDS"))
   # 
   # ## Get most recently prepared data file (if it exists)
   # mrdf <- rev(list.files(paste0(output_folder,"/ml_prepared/",band_f,""),full.names = TRUE, pattern = ".csv.gz"))[1]
@@ -44,7 +45,7 @@ ml_update_localizations_fn_zebby <- function(band_f = as.character(),
   
   ## Get grid points
   grid_points <- get_grid_points_fn_zebby(grid_points_folder,
-                                    crs)
+                                          crs)
   
   
   # ## If new data to prepare:

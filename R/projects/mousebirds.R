@@ -21,17 +21,40 @@ bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-c
   pull(bird_band) %>% 
   unique()
 
-bird_bands = bird_bands[1]
+## Get maximum date for preparing data to account for sensor station uploads
+
+## Active sensor stations
+ss_ids <- c("3DDBDADF9153", "39C9F709EC64","98B773B8FE7C")
+
+max_dates <- data.frame()
+for(ss_id in ss_ids){
+
+  files <- list.files(paste0("/Volumes/ctt_data/files/Mouse Bird/",ss_id,"/raw"))
+  dates <- lapply(files, function(x) unlist(strsplit(x,split = "[.]")))
+  dates_df <- do.call(rbind, dates) %>% 
+    data.frame() %>% 
+    transmute(date= lubridate::ymd_hms(X2),
+              ss = ss_id,
+              max_date = max(date)) %>% 
+    filter(date == max_date)
+  max_dates <- bind_rows(max_dates, dates_df)
+  
+}
+
+## Keep oldest date as filter
+ss_date_filter = min(max_dates$max_date)
+
+
+# bird_bands = bird_bands[1]
 
 
 foreach(band_f = bird_bands,
         .packages=c("tidyverse","lubridate","readr","geosphere"),
         .verbose = FALSE) %dopar%
-  { ml_update_localizations_fn(
+  { ml_update_localizations_fn_mousebird(
     
     ## Database credentials
     db_name = "mousebird",
-    db_password = "time00",
     
     ## Tag value is defined in foreach function
     band_f = band_f,
@@ -53,6 +76,9 @@ foreach(band_f = bird_bands,
     
     ## Time zone
     tz = "Africa/Mbabane",
+    
+    ## Sensor station date filter
+    ss_filter = ss_date_filter,
     
     ## Projected CRS to use
     crs = 22291,

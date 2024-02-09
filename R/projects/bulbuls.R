@@ -28,7 +28,6 @@ foreach(tag_f=bands,.packages=c("tidyverse","lubridate","readr","geosphere"),
     
     ## Database credentials
     db_name = "tyson",
-    db_password = "time00",
     
     ## Tag value is defined in foreach function
     band_f = band_f,

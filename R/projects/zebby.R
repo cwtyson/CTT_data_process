@@ -33,9 +33,7 @@ foreach(band_f = bird_bands,
     
     ## Database credentials
     db_name = "zebbie",
-    
-    db_password = "time00",
-    
+
     ## Tag value is defined in foreach function
     band_f = band_f,
     
