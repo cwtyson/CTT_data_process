@@ -1,11 +1,11 @@
 ml_localize_dets_error_fn_zebby <- function(band_f,
-                                      output_folder,
-                                      grid_points,
-                                      log_dist_RSSI_mdl,
-                                      tz = tz,
-                                      crs = crs,
-                                      reps = reps,
-                                      dist_cutoff = 200){
+                                            output_folder,
+                                            grid_points,
+                                            log_dist_RSSI_mdl,
+                                            tz = tz,
+                                            crs = crs,
+                                            reps = reps,
+                                            dist_cutoff = 200){
   
   cat("############ \n",
       "Starting localizing tag: ", band_f, "\n",
@@ -43,20 +43,24 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
   }
   
   ## Prepared files
-  files_prep <- list.files(path = paste0(output_folder,
-                                         "/ml_prepared/",
-                                         band_f,
-                                         "/"),
-                           ".csv.gz",
-                           full.names = T)
-  
-  ## Get files that have been localized
-  files_localized <- list.files(path = paste0(output_folder,
-                                              "/ml_localized/",
+  files_prep <- gsub(".csv.gz",
+                     "",
+                     list.files(path = paste0(output_folder,
+                                              "/ml_prepared/",
                                               band_f,
                                               "/"),
                                 ".csv.gz",
-                                full.names = T)
+                                full.names = F))
+  
+  ## Get files that have been localized
+  files_localized <- gsub(".RDS",
+                          "",
+                          list.files(path = paste0(output_folder,
+                                                   "/ml_localized/",
+                                                   band_f,
+                                                   "/"),
+                                     ".RDS",
+                                     full.names = F))
   
   ## Files to localize
   files_2_localize <-  files_prep[!(files_prep %in% files_localized)]
@@ -81,8 +85,16 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
       Sys.sleep(0.1)
       setTxtProgressBar(pb2, which(files_2_localize == file))
       
+      ## Set path
+      file_f = paste0(output_folder,
+                      "/ml_prepared/",
+                      band_f,
+                      "/",
+                      file,
+                      ".csv.gz")
+      
       ## Get detections
-      dets <- readr::read_csv(file,
+      dets <- readr::read_csv(file_f,
                               col_types = paste0("ccT", paste(rep('d', 200), collapse='')),
                               show_col_types = FALSE)
       
@@ -258,8 +270,8 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
               cov_list[int] <- list(ell.info$cov)
               
               tag_loc_est <- list(pe_df_list,
-                                    tag_loc_est_list,
-                                    cov_list)
+                                  tag_loc_est_list,
+                                  cov_list)
               
               
             },
@@ -282,12 +294,12 @@ ml_localize_dets_error_fn_zebby <- function(band_f,
         
         ## Save lists as R data file
         saveRDS(tag_loc_est,
-                         paste0(output_folder,
-                                "/ml_localized/",
-                                band_f,
-                                "/",
-                                band_f_date,
-                                ".RDS"))
+                paste0(output_folder,
+                       "/ml_localized/",
+                       band_f,
+                       "/",
+                       band_f_date,
+                       ".RDS"))
         
         cat("\n Finished tag:", band_f, "- date:", band_f_date, "-", length(unique(dets_p$t_ind)), "intervals localized", 
             "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n")
