@@ -1,5 +1,5 @@
-get_grid_points_fn <- function(grid_points_folder,
-                               crs){
+get_grid_points_fn_mousebird <- function(grid_points_folder,
+                                         crs){
   
   
   ## Get all grid point files

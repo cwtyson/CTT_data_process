@@ -1,12 +1,13 @@
 ## Collect raw data
-collect_raw_data_fn <- function(db_name = db_name,
-                                db_password = db_password,
-                                output_folder = output_folder,
-                                tag_folder = tag_folder,
-                                node_folder = node_folder,
-                                grid_points_folder = grid_points_folder,
-                                band_f = band_f,
-                                tz = tz){
+collect_raw_data_fn_mousebird <- function(db_name = db_name,
+                                          db_password = db_password,
+                                          output_folder = output_folder,
+                                          tag_folder = tag_folder,
+                                          node_folder = node_folder,
+                                          grid_points_folder = grid_points_folder,
+                                          ss_filter = ss_filter,
+                                          band_f = band_f,
+                                          tz = tz){
   
   cat("############ \n",
       "Collecting raw data for band: ", band_f, "\n",
@@ -15,8 +16,7 @@ collect_raw_data_fn <- function(db_name = db_name,
   
   ## Connect to data base back end
   conn <- DBI::dbConnect(RPostgres::Postgres(),
-                         dbname = db_name,
-                         password = db_password)
+                         dbname = db_name)
   
   ## Read in tag log and reformat
   tag_log_mr <- sort(list.files(paste0(tag_folder),
@@ -52,6 +52,9 @@ collect_raw_data_fn <- function(db_name = db_name,
     
     ## Keep focal tag(s)
     dplyr::filter(tag_id %in% tags_f) %>%
+    
+    ## Remove times before sensor station filter
+    dplyr::filter(time < ss_filter) %>% 
     
     ## Keep detections after deployment time and before removal times 
     ## TODO: Update removal times to interval to account for period between deployments
