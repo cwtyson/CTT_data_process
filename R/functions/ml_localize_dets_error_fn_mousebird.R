@@ -133,17 +133,17 @@ ml_localize_dets_error_fn_mousebird <- function(band_f,
         ## Empty df
         tag_loc_est <- data.frame()
         
-        ## Set progress bar
-        pb_ints <- txtProgressBar(min = 0, max = length(unique(dets_p$t_ind)), style = 3)
-        
+        # ## Set progress bar
+        # pb_ints <- txtProgressBar(min = 0, max = length(unique(dets_p$t_ind)), style = 3)
+        # 
         ## For each interval
         for(int in unique(dets_p$t_ind)){
           
           # int = unique(dets_p$t_ind)[1]
           
-          ## Progress bar
-          Sys.sleep(0.1)
-          setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
+          # ## Progress bar
+          # Sys.sleep(0.1)
+          # setTxtProgressBar(pb_ints, which(unique(dets_p$t_ind) == int))
           
           tryCatch(
             expr = {
