@@ -10,13 +10,13 @@ source("./R/functions/ml_prepare_dets_error_fn.R")
 source("./R/functions/ml_localize_dets_error_fn_mousebird.R")
 source("./R/functions/get_grid_points_fn_mousebird.R")
 
-cl <- parallel::makeForkCluster(8, outfile = "")
+cl <- parallel::makeForkCluster(11, outfile = "")
 doParallel::registerDoParallel(cl)
 
 ## Define the bird bands to be processed- should be a vector
 bird_bands <- readxl::read_xlsx("/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/tag_logs/tag_log_20230909.xlsx") %>% 
   mutate(year = format(lubridate::dmy(date), "%Y")) %>% 
-  filter(year == "2023") %>% 
+  # filter(year == "2023") %>% 
   filter(species == "SPMO" ) %>% 
   pull(bird_band) %>% 
   unique()
@@ -45,8 +45,8 @@ suppressWarnings(
 ## Keep oldest download date as filter
 ss_date_filter = min(max_dates$max_date)
 
-
-# band_f = bird_bands[1]
+## Run in termainal
+## OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/mousebirds.R
 
 
 foreach(band_f = bird_bands,

@@ -1,10 +1,11 @@
 ml_localize_dets_error_fn_mousebird <- function(band_f,
-                                      output_folder,
-                                      grid_points,
-                                      log_dist_RSSI_mdl,
-                                      tz = tz,
-                                      crs = crs,
-                                      reps = reps){
+                                                output_folder,
+                                                grid_points,
+                                                log_dist_RSSI_mdl,
+                                                tz = tz,
+                                                crs = crs,
+                                                reps = reps,
+                                                dist_cutoff = 200){
   
   cat("############ \n",
       "Starting localizing tag: ", band_f, "\n",
@@ -15,13 +16,13 @@ ml_localize_dets_error_fn_mousebird <- function(band_f,
   
   ## Read in model and convert to table
   mdl_tab <- mdl %>% 
-    broom::augment(newdata = data.frame(RSSIr = seq(-25, -115, by = -1)),
+    broom::augment(newdata = data.frame(RSSI = seq(-25, -115, by = -1)),
                    se_fit = TRUE) %>% 
     dplyr::select(mean_rssi = RSSI,
                   mean = .fitted) %>% 
     dplyr::distinct(mean_rssi,.keep_all = T)
   
-  mdl_sigma <- sigma(mdl_tab)
+  mdl_sigma <- sigma(mdl)
   
   ## Convert grid points to lat/long  ########
   grid_points_ll <- suppressWarnings(grid_points %>%
@@ -41,20 +42,25 @@ ml_localize_dets_error_fn_mousebird <- function(band_f,
   }
   
   ## Prepared files
-  files_prep <- list.files(path = paste0(output_folder,
-                                         "/ml_prepared/",
-                                         band_f,
-                                         "/"),
-                           ".csv.gz",
-                           full.names = T)
-  
-  ## Get files that have been localized
-  files_localized <- list.files(path = paste0(output_folder,
-                                              "/ml_localized/",
+  files_prep <- gsub(".csv.gz",
+                     "",
+                     list.files(path = paste0(output_folder,
+                                              "/ml_prepared/",
                                               band_f,
                                               "/"),
                                 ".csv.gz",
-                                full.names = T)
+                                full.names = F))
+  
+  ## Get files that have been localized
+  files_localized <- gsub(".RDS",
+                          "",
+                          list.files(path = paste0(output_folder,
+                                                   "/ml_localized/",
+                                                   band_f,
+                                                   "/"),
+                                     ".RDS",
+                                     full.names = F))
+  
   
   ## Files to localize
   files_2_localize <-  files_prep[!(files_prep %in% files_localized)]
@@ -79,10 +85,19 @@ ml_localize_dets_error_fn_mousebird <- function(band_f,
       Sys.sleep(0.1)
       setTxtProgressBar(pb2, which(files_2_localize == file))
       
+      ## Set path
+      file_f = paste0(output_folder,
+                      "/ml_prepared/",
+                      band_f,
+                      "/",
+                      file,
+                      ".csv.gz")
+      
       ## Get detections
-      dets <- readr::read_csv(file,
+      dets <- readr::read_csv(file_f,
                               col_types = paste0("ccT", paste(rep('d', 200), collapse='')),
                               show_col_types = FALSE)
+      
       
       
       
@@ -143,13 +158,17 @@ ml_localize_dets_error_fn_mousebird <- function(band_f,
               ## Repeat X times
               for(i in 1:reps){
                 
-                ## Sample within interval - SD set to 0
+                ## Sample within interval
                 dets_p_int_sample <- dets_p_int %>% 
+                  mutate(dist_est_mean = predict(mdl, newdata =  data.frame(RSSI = mean_rssi))) %>% 
                   dplyr::rowwise() %>% 
-                  dplyr::mutate(dist_est_samp = round(10^(sample(rnorm(n = 100, mean = mean,sd = sd),size = 1))),
+                  dplyr::mutate(dist_est_samp = round(10^(sample(rnorm(n = 100,
+                                                                       mean = dist_est_mean,
+                                                                       sd = mdl_sigma),size = 1))),
                                 
-                                ## Cutoff estimates at 150 m
-                                dist_est_samp = ifelse(dist_est_samp > 150, 150, dist_est_samp))
+                                ## Cutoff estimates 
+                                dist_est_samp = ifelse(dist_est_samp > dist_cutoff, dist_cutoff, dist_est_samp))
+                
                 
                 # Determine the node with the strongest avg.RSSI value to be used as starting values
                 max_RSSI <- dets_p_int[which.max(dets_p_int$mean_rssi),]
@@ -188,7 +207,6 @@ ml_localize_dets_error_fn_mousebird <- function(band_f,
                 ellipse_cov_est[[i]] <- ell.info$cov
                 
               }
-              
               
               ## Get average point
               pts <- do.call(rbind, ellipse_center_est) %>% 
