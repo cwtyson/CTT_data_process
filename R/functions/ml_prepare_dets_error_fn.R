@@ -52,13 +52,18 @@ ml_prepare_dets_error_fn <- function(dets_t,
       Sys.sleep(0.1)
       setTxtProgressBar(pb, which(days2prepare == day_f))
       # 
-      # day_f = days2prepare[1]
+      # day_f = days2prepare[2]
       
       day_f_f <- as.Date(day_f, tz = tz)
       
       dets_2_prepare <- dets_t %>% 
         dplyr::filter(date == day_f_f)
       
+      # ## Summarize detections per day
+      # dets_sum <- dets_t %>% 
+      #   group_by(date) %>% 
+      #   summarise(dets= n())
+      # 
       ## If any to prepare
       if(nrow(dets_2_prepare) > 0){
         
@@ -138,23 +143,30 @@ ml_prepare_dets_error_fn <- function(dets_t,
             grid_points_df_f <- grid_points %>% 
               dplyr::filter(grid_point %in% interval_gps) 
             
-            ## Get distance between nodes with detections during the point
-            n_dist <- raster::pointDistance(grid_points_df_f[,c("gp_x", "gp_y")], 
-                                            grid_points_df_f[,c("gp_x", "gp_y")], 
-                                            lonlat = F,
-                                            allpairs = T)
+            ## If any:
+            if(nrow(grid_points_df_f)>0){
+              
+              ## Get distance between nodes with detections during the point
+              n_dist <- raster::pointDistance(grid_points_df_f[,c("gp_x", "gp_y")], 
+                                              grid_points_df_f[,c("gp_x", "gp_y")], 
+                                              lonlat = F,
+                                              allpairs = T)
+              
+              # Make matrix into a dataframe with a row for NodeId
+              n_dist_df <- data.frame(n_dist)
+              colnames(n_dist_df) <- grid_points_df_f$grid_point
+              n_dist_df$gp <- colnames(n_dist_df)
+              
+              ## Keep nodes within specified distance filter
+              nodes_dist_f <- n_dist_df %>%
+                dplyr::filter(gp == gp_max_rssi[gp_max_rssi$t_ind == interval,]$grid_point) %>% 
+                tidyr::gather(key = "gp_", 
+                              value = "distance") %>%
+                dplyr::filter(distance <= dist_filter) 
+              
+            }
             
-            # Make matrix into a dataframe with a row for NodeId
-            n_dist_df <- data.frame(n_dist)
-            colnames(n_dist_df) <- grid_points_df_f$grid_point
-            n_dist_df$gp <- colnames(n_dist_df)
-            
-            ## Keep nodes within specified distance filter
-            nodes_dist_f <- n_dist_df %>%
-              dplyr::filter(gp == gp_max_rssi[gp_max_rssi$t_ind == interval,]$grid_point) %>% 
-              tidyr::gather(key = "gp_", 
-                            value = "distance") %>%
-              dplyr::filter(distance <= dist_filter) 
+           
             
             ## If there are at least 3 nodes
             if( nrow(nodes_dist_f) >= 3 ){
@@ -197,20 +209,24 @@ ml_prepare_dets_error_fn <- function(dets_t,
             dir.create(paste0(output_folder,"/ml_prepared/", band_f))
           }  
           
-          ## Split based on date round and save (not neecessary to use this approach, but keeping for now)
-          dt_r_dets_w %>% 
-            dplyr::group_by(date_round) %>% 
-            dplyr::group_walk(~ write.csv(.x, paste0(output_folder,
-                                                     "/ml_prepared/",
-                                                     band_f,
-                                                     "/",
-                                                     .y$date_round,
-                                                     ".csv.gz"),
-                                          row.names = F))
+          ## Split based on date round and save
+          write.csv(dt_r_dets_w, paste0(output_folder,
+                                        "/ml_prepared/",
+                                        band_f,
+                                        "/",
+                                        day_f,
+                                        ".csv.gz"),
+                    row.names = F)
+          cat("\n Finished tag:", band_f, "- day:", day_f,"\n")
+          
+        } else{
+          
+          cat("\n No data to save for tag:", band_f, "- day:", day_f,"\n")
+          
         }
       } 
       
-      cat("\n Finished tag:", band_f, "- day:", day_f,"\n")
+      
     }
   }
   # ## End progress bar
