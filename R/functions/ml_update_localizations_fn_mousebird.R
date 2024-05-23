@@ -22,7 +22,7 @@ ml_update_localizations_fn_mousebird <- function(band_f = as.character(),
   #                               output_folder = output_folder,
   #                               ss_filter = ss_filter,
   #                               tz = tz)
-  # 
+   
   ## Read in raw data
   dets_t <- readRDS(paste0(output_folder,"/raw_detections/data/",band_f,".RDS"))
 
@@ -32,7 +32,7 @@ ml_update_localizations_fn_mousebird <- function(band_f = as.character(),
   ## Get date time to filter by
   if(!is.na(mrdf)){
     mrd <- suppressWarnings(readr::read_csv(mrdf,show_col_types = FALSE) %>%
-                              dplyr::mutate(dt_r = lubridate::force_tz(dt_r, tz =tz)) %>% 
+                              dplyr::mutate(dt_r = lubridate::force_tz(dt_r, tz =tz)) %>%
                               dplyr::pull(dt_r) %>%
                               max())
     mrd <- lubridate::with_tz(mrd, tz = tz)
@@ -43,7 +43,7 @@ ml_update_localizations_fn_mousebird <- function(band_f = as.character(),
   ## Filter detections based on prepared data
   dets_t <- dets_t %>%
     dplyr::filter(date_time >= mrd)
-  
+
   ## Get grid points
   grid_points <- get_grid_points_fn_mousebird(grid_points_folder,
                                               crs)
@@ -58,16 +58,14 @@ ml_update_localizations_fn_mousebird <- function(band_f = as.character(),
                              output_folder = output_folder,
                              tz = tz)
 
-  } 
-  # else{
-  #   
-  #   cat("############ \n",
-  #       "No new data for tag: ", band_f, "\n",
-  #       "############ \n", sep = "")
-  #   
-  # }
-  # 
-  # 
+  }
+  else{
+
+    cat("############ \n",
+        "No new data for tag: ", band_f, "\n",
+        "############ \n", sep = "")
+
+  }
   
   # ## Then localize
   # ml_localize_dets_error_fn_mousebird(band_f = band_f,
@@ -78,6 +76,5 @@ ml_update_localizations_fn_mousebird <- function(band_f = as.character(),
   #                                     crs = crs,
   #                                     rep = reps,
   #                                     dist_cutoff = 200)
-  # 
   
 }

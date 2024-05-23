@@ -184,10 +184,10 @@ collect_raw_data_fn_mousebird <- function(db_name = db_name,
     
     ## Check filtered data
     dets_sum_plot <- ggplot2::ggplot(dets_sum) +
-      ggplot2::geom_point(aes(x=date,
-                              y=grid_point,
-                              color = mean_rssi,
-                              size = dets)) +
+      ggplot2::geom_point(ggplot2::aes(x=date,
+                                       y=grid_point,
+                                       color = mean_rssi,
+                                       size = dets)) +
       ggplot2::scale_colour_gradientn(colours = wesanderson::wes_palette("Zissou1", 100, type = "continuous"), name = "rssi") +
       ggplot2::theme_minimal()
     

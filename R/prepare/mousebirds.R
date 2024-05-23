@@ -10,7 +10,8 @@ source("./R/functions/ml_prepare_dets_error_fn.R")
 source("./R/functions/ml_localize_dets_error_fn_mousebird.R")
 source("./R/functions/get_grid_points_fn_mousebird.R")
 
-cores<-parallel::detectCores()-1
+# cores<-parallel::detectCores()-1
+cores = 2
 cl <- parallel::makeForkCluster(cores, outfile = "")
 doParallel::registerDoParallel(cl)
 
@@ -43,11 +44,12 @@ suppressWarnings(
     
   }
 )
+
 ## Keep oldest download date as filter
 ss_date_filter = min(max_dates$max_date)
 
 ## Run in termainal
-## OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/mousebirds.R
+## OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/prepare/mousebirds.R
 
 # bird_bands = "4A94970"
 
