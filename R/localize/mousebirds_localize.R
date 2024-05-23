@@ -63,7 +63,7 @@ foreach(file_f = files_2_localize,
     log_dist_RSSI_mdl = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2023/RSSI_log_distance_lm_Eswatini.RDS",
     
     ## File with dates to exclude
-    failure_date_file = "/Volumes/data_bases/bulbuls/misc/bulbul_2021_failure_dates.csv",
+    failure_date_file = NA,
     
     ## Time zone
     tz = "Africa/Mbabane",

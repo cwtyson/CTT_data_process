@@ -60,12 +60,13 @@ ml_localize_dets_error_fn <- function(file_f,
       filter(tag == band_f) %>% 
       pull(fail_date)
     
+    ## Remove detections after failure date
+    dets <- dets %>% 
+      filter(dt_r < failure_dates)
+    
   }
   
-  ## Remove detections after failure date
-  dets <- dets %>% 
-    filter(dt_r < failure_dates)
-  
+
   ## If any:
   if(nrow(dets) > 0){
     
