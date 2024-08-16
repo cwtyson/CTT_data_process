@@ -25,9 +25,6 @@ hpc_localize_fn(
   ## Folder where grid point files are saved
   grid_points_folder = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2024/grid_points/",
   
-  ## Folder where the data should be saved. A new folder will be created for each tag
-  output_folder =   "/Users/tyson/Downloads/",
-  
   ## Location of log-linear model RSSI~distance output
   log_dist_RSSI_mdl = "/Users/tyson/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2024/RSSI_log_distance_lm_Eswatini.RDS",
   
