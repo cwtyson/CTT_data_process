@@ -253,10 +253,10 @@ hpc_localize_fn <- function(file_f,
     ## Create tag directory if needed
     dir <- paste(head(unlist(strsplit(outfile,"/")),-1),collapse="/")
     if (!dir.exists(dir)) dir.create(dir)
-      
-      ## Save lists as R data file
-      saveRDS(tag_loc_est,
-              outfile)
+    
+    ## Save lists as R data file
+    saveRDS(tag_loc_est,
+            outfile)
     
     cat("\n Finished file:", file_f_ab, "-", length(unique(dets_p$t_ind)), "intervals localized", 
         "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n")
