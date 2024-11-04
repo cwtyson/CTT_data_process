@@ -27,7 +27,6 @@ hpc_localize_fn <- function(file_f,
   
   mdl_sigma <- sigma(mdl)
   
-  
   ## Get grid points
   grid_points <- get_grid_points_fn_mousebird(grid_points_folder,
                                               crs)
@@ -43,15 +42,12 @@ hpc_localize_fn <- function(file_f,
                                                         gp_lat = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                        sf::st_drop_geometry())
   
-  
-  
-  
-  
   ## Get detections
   dets <- readr::read_csv(file_f,
                           col_types = paste0("ccT", paste(rep('d', 200), collapse='')),
-                          show_col_types = FALSE)
-  
+                          show_col_types = FALSE) %>% 
+    dplyr::select(-date_round)
+
   ## Process for multilateration 
   dets_p <- dets %>% 
     

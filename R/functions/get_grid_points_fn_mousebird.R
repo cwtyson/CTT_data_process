@@ -21,14 +21,14 @@ get_grid_points_fn_mousebird <- function(grid_points_folder,
                                                          gp_y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
                                         sf::st_drop_geometry())
     
-    grid_points <- bind_rows(grid_points,
+    grid_points <- dplyr::bind_rows(grid_points,
                              grid_points_f) 
     
   }
   
   ## Keep unique points
   grid_points <- grid_points %>% 
-    distinct(grid_point,
+    dplyr::distinct(grid_point,
              .keep_all = T)
   
   return(grid_points)
