@@ -4,8 +4,9 @@ library(dplyr)
 library(geosphere)
 
 ## Source functions
-source("./R/functions/collect_raw_data_fn.R")
+source("/Users/tracking/git/CTT_data_process/R/functions/collect_raw_data_fn.R")
 
+## Set parallel options
 cores = parallel::detectCores()
 cl <- parallel::makeForkCluster(cores-1, outfile = "")
 doParallel::registerDoParallel(cl)
@@ -13,6 +14,7 @@ doParallel::registerDoParallel(cl)
 ## Set time zone
 tz = "Australia/Broken_Hill"
 
+## Tag folder
 tag_log_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/"
 
 ## Read in tag log and reformat
@@ -72,5 +74,4 @@ foreach(band_f = bird_bands,
                         node_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/nodes",
                         output_folder = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/",
                         tz = tz)
-    
   }

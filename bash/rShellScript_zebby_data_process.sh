@@ -1,0 +1,3 @@
+#!/bin/bash
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript /Users/tracking/git/CTT_data_process/R/projects/collect/collect_zebby.R
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript /Users/tracking/git/CTT_data_process/R/projects/prepare/prepare_zebby.R

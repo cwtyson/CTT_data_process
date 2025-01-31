@@ -65,8 +65,7 @@ ml_update_localizations_fn_zebby <- function(band_f = as.character(),
   #   
   # }
   
-  
-  
+
   ## Then localize
   ml_localize_dets_error_fn_zebby(band_f = band_f,
                                   output_folder = output_folder,

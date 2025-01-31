@@ -20,15 +20,15 @@ collect_raw_data_fn <- function(band_f = band_f,
   tag_start_dt <- min(tag_log_f$tag_start_time)
   tag_end_dt <- max(tag_log_f$tag_removal_time)
   
+  ## Year
+  year = format(tag_start_dt, "%Y")
+  
   ## Tag(s) based on focal band
   tags_f <- unique(tag_log_f$tag)
   
   ## Connection to database
   conn <- DBI::dbConnect(drv = duckdb::duckdb(dbdir = db_name,read_only = TRUE, config = list("access_mode" = "READ_ONLY")))
   
-  # ## Check connection
-  # DBI::dbListTables(conn)
-  # 
   ## Read in detections from database
   dets_raw <- dplyr::tbl(conn, "raw") %>%
     
@@ -84,12 +84,14 @@ collect_raw_data_fn <- function(band_f = band_f,
     node_codes_mr <- sort(list.files(node_folder,
                                      full.names = TRUE,
                                      pattern = "node_codes"),
-                          decreasing = TRUE)[1]
-    
+                          decreasing = TRUE)[1] 
     
     ## Read in node codes
-    node_codes <- readxl::read_xlsx(node_codes_mr) %>%
-      dplyr::mutate(node_number = as.character(node_number))
+    node_codes <- suppressMessages(readxl::read_xlsx(node_codes_mr) %>%
+                                     dplyr::mutate(node_number = as.character(node_number)) %>% 
+                                     select(node_number,
+                                            node))
+    
     
     ## Read in node log and reformat
     node_log_mr <- sort(list.files(paste0(node_folder),
@@ -100,7 +102,6 @@ collect_raw_data_fn <- function(band_f = band_f,
     node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
                                    dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
                                                  removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
-                                   dplyr::filter(location=="gp") %>% 
                                    ## Join node node
                                    dplyr::left_join(node_codes,
                                                     by  = "node_number") %>%
@@ -174,24 +175,38 @@ collect_raw_data_fn <- function(band_f = band_f,
     ## Check filtered data
     dets_sum_plot <- ggplot2::ggplot(dets_sum) +
       ggplot2::geom_point(ggplot2::aes(x=date,
-                              y=grid_point,
-                              color = mean_rssi,
-                              size = dets)) +
+                                       y=grid_point,
+                                       color = mean_rssi,
+                                       size = dets)) +
       ggplot2::scale_colour_gradientn(colours = wesanderson::wes_palette("Zissou1", 100, type = "continuous"), name = "rssi") +
       ggplot2::theme_minimal()
     
     ## Plot
     ggplot2::ggsave(plot = dets_sum_plot,
                     filename = paste0(output_folder,
-                                      "/raw_detections/plots/", 
+                                      "/raw_detections/",
+                                      year,
+                                      "/plots/", 
                                       band_f,
-                                      "_detection_summary.jpg"),
+                                      "_detection_summmary.jpg"),
                     scale = 2,
                     create.dir = TRUE)
     
+    
     ## Save raw data
     saveRDS(dets_t,
-            paste0(output_folder,"/raw_detections/data/",band_f,".RDS")) 
+            paste0(output_folder,
+                   "/raw_detections/", 
+                   year, 
+                   "/data/",
+                   band_f,
+                   ".RDS"))
+    
+    ## Remove
+    rm(dets_t)
+    
+    ## Garbage cleanup
+    gc()
     
     cat("############ \n",
         "Finished cleaning raw data for band: ", band_f, "\n",
