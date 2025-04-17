@@ -4,19 +4,19 @@ library(dplyr)
 library(geosphere)
 
 ## Source functions
-source("/Users/tracking/git/CTT_data_process/R/functions/get_grid_points_fn_zebby.R")
+source("/Users/tracking/git/CTT_data_process/R/functions/get_grid_points_fn_mousebird.R")
 source("/Users/tracking/git/CTT_data_process/R/functions/ml_prepare_dets_error_fn.R")
 
 ## Set parallel options
 cores = parallel::detectCores()
-cl <- parallel::makeForkCluster(cores-1, outfile = "")
+cl <- parallel::makeForkCluster(cores-2, outfile = "")
 doParallel::registerDoParallel(cl)
 
 ## Set time zone
-tz = "Australia/Broken_Hill"
+tz = "Africa/Mbabane"
 
 ## Tag folder
-tag_log_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/"
+tag_log_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Eswatini_field_data/2024/tag_logs/"
 
 ## Read in tag log and reformat
 tag_log_mr <- sort(list.files(paste0(tag_log_folder),
@@ -49,18 +49,15 @@ tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>%
                                                  tag,
                                                  tag_start_time,
                                                  tag_removal_time) %>% 
-                                   dplyr::mutate(tag_removal_time = if_else(is.na(tag_removal_time), Sys.time(), tag_removal_time))) %>% 
-  
-  ## Keep birds from 2024
-  dplyr::filter(year == "2024")
+                                   dplyr::mutate(tag_removal_time = if_else(is.na(tag_removal_time), Sys.time(), tag_removal_time))) 
 
 ## Bird bands from most recent log
-bird_bands = unique(tag_log_all$bird_band)
+bird_bands = sample(unique(tag_log_all$bird_band))
 
-# band_f = bird_bands[1]
+# band_f = bird_bands[23]
 
 ## Run in terminal as:
-# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/prepare/prepare_zebby.R
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/prepare/prepare_mousebird.R
 
 foreach(band_f = bird_bands,
         # .packages=c("dplyr","lubridate","readr","geosphere"),
