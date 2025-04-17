@@ -4,12 +4,10 @@ library(dplyr)
 library(geosphere)
 
 ## Source functions
-source("/Users/tracking/git/CTT_data_process/R/functions/collect_raw_data_fn.R")
-
 ## Set parallel options
 cores = parallel::detectCores()
-cl <- parallel::makeForkCluster(cores-1, outfile = "")
-doParallel::registerDoParallel(cl)
+cl <- parallel::makeForkCluster(cores-6, outfile = "")
+source("/Users/tracking/git/CTT_data_process/R/functions/collect_raw_data_fn_zebby.R")
 
 ## Set time zone
 tz = "Australia/Broken_Hill"
@@ -23,7 +21,8 @@ tag_log_mr <- sort(list.files(paste0(tag_log_folder),
                               pattern = "tag_log"),
                    decreasing = TRUE)[1]
 
-##  Process most recent tag log
+
+## Tag log
 tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>% 
                                janitor::clean_names() %>% 
                                transmute(species,
@@ -56,8 +55,6 @@ tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>%
 ## Bird bands from most recent log
 bird_bands = unique(tag_log_all$bird_band)
 
-# band_f = bird_bands[1]
-
 ## Run in terminal as:
 # OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/zebby.R
 
@@ -74,4 +71,5 @@ foreach(band_f = bird_bands,
                         node_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/nodes",
                         output_folder = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/",
                         tz = tz)
+
   }

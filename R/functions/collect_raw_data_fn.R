@@ -29,6 +29,9 @@ collect_raw_data_fn <- function(band_f = band_f,
   ## Connection to database
   conn <- DBI::dbConnect(drv = duckdb::duckdb(dbdir = db_name,read_only = TRUE, config = list("access_mode" = "READ_ONLY")))
   
+  # ## Check connection
+  # DBI::dbListTables(conn)
+  # 
   ## Read in detections from database
   dets_raw <- dplyr::tbl(conn, "raw") %>%
     
@@ -60,11 +63,6 @@ collect_raw_data_fn <- function(band_f = band_f,
   ## Disconnect
   DBI::dbDisconnect(conn)
   
-  # ## Check raw data
-  # ggplot(dets_raw) +
-  #   geom_point(aes(x=date_time,
-  #                  y=node,
-  #                  color = rssi))
   
   cat("############ \n",
       "Finished collecting raw data for band: ", band_f, "\n",
@@ -84,14 +82,14 @@ collect_raw_data_fn <- function(band_f = band_f,
     node_codes_mr <- sort(list.files(node_folder,
                                      full.names = TRUE,
                                      pattern = "node_codes"),
-                          decreasing = TRUE)[1] 
+                          decreasing = TRUE)[1]
+    
     
     ## Read in node codes
     node_codes <- suppressMessages(readxl::read_xlsx(node_codes_mr) %>%
                                      dplyr::mutate(node_number = as.character(node_number)) %>% 
-                                     select(node_number,
-                                            node))
-    
+                                     dplyr::select(node_number,
+                                                   node))
     
     ## Read in node log and reformat
     node_log_mr <- sort(list.files(paste0(node_folder),
@@ -102,6 +100,8 @@ collect_raw_data_fn <- function(band_f = band_f,
     node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
                                    dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
                                                  removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
+                                   
+                                   # dplyr::filter(location=="gp") %>% 
                                    ## Join node node
                                    dplyr::left_join(node_codes,
                                                     by  = "node_number") %>%
@@ -190,6 +190,8 @@ collect_raw_data_fn <- function(band_f = band_f,
                                       band_f,
                                       "_detection_summmary.jpg"),
                     scale = 2,
+                    width = 7,
+                    height = 7,
                     create.dir = TRUE)
     
     
@@ -202,11 +204,9 @@ collect_raw_data_fn <- function(band_f = band_f,
                    band_f,
                    ".RDS"))
     
-    ## Remove
-    rm(dets_t)
-    
     ## Garbage cleanup
     gc()
+    rm(dets_t)
     
     cat("############ \n",
         "Finished cleaning raw data for band: ", band_f, "\n",

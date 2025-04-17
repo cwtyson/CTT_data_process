@@ -19,7 +19,9 @@ collect_raw_data_fn <- function(band_f = band_f,
   ## Tag(s) based on focal band
   tags_f <- unique(tag_log$tag)
   
-  
+  ## Connection to database
+  conn <- DBI::dbConnect(duckdb::duckdb((dir = db_name)))
+
   ## Read in detections from database
   dets <- dplyr::tbl(conn, "raw") %>%
     
@@ -46,10 +48,10 @@ collect_raw_data_fn <- function(band_f = band_f,
                      date_time = lubridate::with_tz(time, tz = "Australia/Broken_Hill"),
                      tag = tag_id,
                      rssi = tag_rssi) %>%
+
     dplyr::arrange(date_time)
   
  
-
   # ## Check raw data
   # ggplot(dets_raw) +
   #   geom_point(aes(x=date_time,

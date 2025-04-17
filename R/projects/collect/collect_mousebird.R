@@ -8,7 +8,7 @@ source("/Users/tracking/git/CTT_data_process/R/functions/collect_raw_data_fn.R")
 
 ## Set parallel options
 cores = parallel::detectCores()
-cl <- parallel::makeForkCluster(cores-8, outfile = "")
+cl <- parallel::makeForkCluster(cores-10, outfile = "")
 doParallel::registerDoParallel(cl)
 
 ## Set time zone
@@ -54,14 +54,13 @@ tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>%
                                    ## Keep only mousebirds
                                    dplyr::filter(species == "SPMO") %>% 
                                    
-                                   ## Keep 2023 & 2024 birds
-                                   dplyr::filter(year %in% c(2023,2024)))
+                                   dplyr::filter(year %in% c(2021:2022)))
 
 
 ## Bird bands from most recent log
-bird_bands = unique(tag_log_all$bird_band)
+bird_bands = rev(unique(tag_log_all$bird_band))
 
-# band_f = bird_bands[50]
+# band_f = bird_bands[26]
 
 ## Run in terminal as:
 # OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/collect/collect_mousebird.R
