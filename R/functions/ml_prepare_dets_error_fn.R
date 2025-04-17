@@ -48,8 +48,8 @@ ml_prepare_dets_error_fn <- function(band_f,
   year = min(tag_log_all$year)
   
   ## Get grid points
-  grid_points <- get_grid_points_fn_zebby(grid_points_folder,
-                                          crs)
+  grid_points <- get_grid_points_fn_mousebird(grid_points_folder,
+                                              crs)
   
   ## Read in raw data
   dets_t <- readRDS(paste0(output_folder, "/raw_detections", "/", year, "/data/",band_f,".RDS"))
@@ -73,7 +73,7 @@ ml_prepare_dets_error_fn <- function(band_f,
   dets_t <- dets_t %>%
     dplyr::filter(date_time >= mrd)
   
-
+  
   ## If new data to prepare:
   if(nrow(dets_t) > 0){
     
@@ -95,13 +95,13 @@ ml_prepare_dets_error_fn <- function(band_f,
     ## Keep any days greater than or equal to last day prepared
     days2prepare <- as.character(raw_days[raw_days >= mrd])
     
-    ## Set progress bar for preparing tags
-    pb <- txtProgressBar(min = 0, max = length(days2prepare), style = 3)
-    
     ## Files that still need to be prepared
     if(length(days2prepare) > 0){
       
       cat("\n Starting tag:", band_f, "- days to prepare:", length(days2prepare), "\n")
+    
+      ## Set progress bar for preparing tags
+      pb <- txtProgressBar(min = 0, max = length(days2prepare), style = 3)
       
       for(day_f in days2prepare){
         
@@ -288,9 +288,11 @@ ml_prepare_dets_error_fn <- function(band_f,
         } 
         
       }
+      
+      # ## End progress bar
+      close(pb)
     }
-    # ## End progress bar
-    close(pb)
+
     
     cat("############ \n",
         "Finished preparing tag: ", band_f," - days prepared: ", "\n",
