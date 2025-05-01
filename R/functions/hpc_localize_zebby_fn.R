@@ -1,6 +1,3 @@
-file_f = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/ml_prepared/2024/02745371/2024-10-27.csv.gz"
-rssi_dist_model_file = "R/data/RSSI_log_dist_model_zebby.RDS"
-
 ## HPC localize
 hpc_localize_zebby_fn <- function(file_f,
                                   rssi_dist_model_file,
