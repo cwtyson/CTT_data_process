@@ -1,9 +1,8 @@
 ml_prepare_dets_error_fn <- function(band_f,
-                                     tag_log_folder,
-                                     grid_points,
                                      output_folder, 
+                                     grid_points_folder,
                                      tz,
-                                     crs = crs,
+                                     crs,
                                      sumFun = "mean",
                                      window = "30 secs",
                                      lag = "0 secs",
@@ -57,6 +56,11 @@ ml_prepare_dets_error_fn <- function(band_f,
     ## Keep any days greater than or equal to last day prepared
     days2prepare <- as.character(raw_days[raw_days >= mrd])
     
+    ## Get grid points
+    grid_points <- get_grid_points_fn_zebby(grid_points_folder,
+                                            crs = 3308)
+    
+    
     ## Files that still need to be prepared
     if(length(days2prepare) > 0){
       
@@ -65,6 +69,7 @@ ml_prepare_dets_error_fn <- function(band_f,
       ## Set progress bar for preparing tags
       pb <- txtProgressBar(min = 0, max = length(days2prepare), style = 3)
       
+      ## Prepare each day separately
       for(day_f in days2prepare){
         
         ## Progress bar
@@ -159,15 +164,15 @@ ml_prepare_dets_error_fn <- function(band_f,
           }  
           
           ## Split based on date round and save
-          write.csv(fdets_prep_sum, paste0(output_folder,
-                                           "/ml_prepared/",
-                                           year,
-                                           "/", 
-                                           band_f,
-                                           "/",
-                                           day_f,
-                                           ".csv.gz"),
-                    row.names = F)
+          readr::write_csv(x= fdets_prep_sum, 
+                           file = paste0(output_folder,
+                                         "/ml_prepared/",
+                                         year,
+                                         "/", 
+                                         band_f,
+                                         "/",
+                                         day_f,
+                                         ".csv.gz"))
           
           cat("\n Finished tag:", band_f, "- day:", day_f,"\n")
           
@@ -178,26 +183,15 @@ ml_prepare_dets_error_fn <- function(band_f,
           
         }
       } 
-      
     }
-    
-    # ## End progress bar
+    ## End progress bar
     close(pb)
   }
   
-  
   cat("############ \n",
-      "Finished preparing tag: ", band_f," - days prepared: ", "\n",
+      "Finished preparing tag: ", band_f," - days prepared: ", n_distinct(raw_days), "\n",
       "############ \n", sep = "")
   
-} else{
-  
-  cat("############ \n",
-      "No new data for tag: ", band_f, "\n",
-      "############ \n", sep = "")
-  
-}
-
 }
 
 

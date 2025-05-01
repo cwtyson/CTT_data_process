@@ -54,10 +54,6 @@ tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>%
   ## Keep birds from 2024
   dplyr::filter(year == "2024")
 
-## Get grid points
-grid_points <- get_grid_points_fn_zebby(grid_points_folder = "/Users/tracking/Google Drive/My Drive/Zebby_tracking_field_data/grid_points/",
-                                        crs = 3308)
-
 
 ## Bird bands from most recent log
 bird_bands = unique(tag_log_all$bird_band)
@@ -74,12 +70,12 @@ foreach(band_f = bird_bands,
     
     ## Prepare each tag
     ml_prepare_dets_error_fn(band_f = band_f,
-                             tag_log_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/",
-                             grid_points = grid_points,
                              output_folder = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/",
+                             grid_points_folder = "/Users/tracking/Google Drive/My Drive/Zebby_tracking_field_data/grid_points/",
+                             tz,
+                             crs = crs,
+                             sumFun = "mean",
                              window = "30 secs",
                              lag = "0 secs",
-                             crs = 3308,
-                             dist_filter = 175,
-                             tz = tz)
+                             dist_filter = 175)
   }
