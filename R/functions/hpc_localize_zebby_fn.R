@@ -240,7 +240,7 @@ hpc_localize_zebby_fn <- function(file_f,
   
   ## Create tag directory if needed
   dir <- paste(head(unlist(strsplit(outfile,"/")),-1),collapse="/")
-  if (!dir.exists(dir)) dir.create(dir)
+  if (!dir.exists(dir)) dir.create(dir,recursive = T)
   
   ## Save lists as R data file
   saveRDS(tag_loc_est,

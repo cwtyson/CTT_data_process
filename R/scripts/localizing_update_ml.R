@@ -4,7 +4,7 @@ library(dplyr)
 
 ## Source functions
 source("./R/functions/collect_raw_data_fn.R")
-source("./R/functions/ml_update_localizations_fn.R")
+source("./R/functions/ml_update_localizations_fn_mousebird.R")
 source("./R/functions/ml_prepare_dets_error_fn.R")
 source("./R/functions/ml_localize_dets_error_fn.R")
 
