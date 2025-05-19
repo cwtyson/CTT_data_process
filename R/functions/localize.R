@@ -4,7 +4,7 @@ hpc_localize_zebby_fn <- function(file_f,
                                   model_scale = c("log", "exp"),
                                   reps = 100){
   
-  file_f = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/ml_prepared/2024/02743989/2024-10-08.csv.gz"
+  # file_f = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/ml_prepared/2024/02743989/2024-10-08.csv.gz"
   # rssi_dist_model_file = "./R/data/RSSI_log_dist_model_zebby.RDS"
   
   ## Shortened file name for printing
@@ -224,7 +224,8 @@ hpc_localize_zebby_fn <- function(file_f,
       pe_df_p <- tag_int_loc_est %>% 
         dplyr::left_join(pe_df %>% 
                            dplyr::mutate(int_id = tag_int_loc_est$int_id),
-                         by = dplyr::join_by(int_id))
+                         by = dplyr::join_by(int_id)) %>% 
+        dplyr::select(int_id, x_solution,y_solution)
       
       ## Add elements to list
       tag_loc_est_list[int] <- list(tag_int_loc_est)
