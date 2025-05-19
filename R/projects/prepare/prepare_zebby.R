@@ -14,6 +14,7 @@ doParallel::registerDoParallel(cl)
 
 ## Set time zone
 tz = "Australia/Broken_Hill"
+crs = 3308
 
 ## Tag folder
 tag_log_folder = "/Users/tracking/Library/CloudStorage/GoogleDrive-cwtyson@gmail.com/My Drive/Zebby_tracking_field_data/tags/"
@@ -58,7 +59,7 @@ tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>%
 ## Bird bands from most recent log
 bird_bands = unique(tag_log_all$bird_band)
 
-# band_f = bird_bands[1]
+band_f = "02745374"
 
 ## Run in terminal as:
 # OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/prepare/prepare_zebby.R
@@ -72,8 +73,8 @@ foreach(band_f = bird_bands,
     ml_prepare_dets_error_fn(band_f = band_f,
                              output_folder = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/",
                              grid_points_folder = "/Users/tracking/Google Drive/My Drive/Zebby_tracking_field_data/grid_points/",
-                             tz,
-                             crs = crs,
+                             tz = "Australia/Broken_Hill",
+                             crs = 3308,
                              sumFun = "mean",
                              window = "30 secs",
                              lag = "0 secs",
