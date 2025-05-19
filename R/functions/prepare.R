@@ -1,11 +1,11 @@
-prepare_fn <- function(dets,
-                       grid_points_folder,
-                       tz,
-                       crs,
-                       window,
-                       lag,
-                       dist_filter,
-                       sumFun){
+prepare <- function(dets,
+                    grid_points_folder,
+                    tz,
+                    crs,
+                    window,
+                    lag,
+                    dist_filter,
+                    sumFun){
   
   cat(window, "-", lag, "-", dist_filter, "-", sumFun, "\n")
   
@@ -18,7 +18,7 @@ prepare_fn <- function(dets,
   fdets_prep <- dets %>%
     # slice(1:100) %>%
     dplyr::arrange(date_time) %>% 
-    dplyr::group_by(tag, place, type, state, point, grid_point) %>% 
+    dplyr::group_by(bird_band, grid_point) %>% 
     dplyr::mutate(dt_r = lubridate::round_date(date_time,
                                                unit = window),
                   rssi_gp = runner::runner(x = .,
@@ -31,11 +31,8 @@ prepare_fn <- function(dets,
   
   ## Summarize based on rounded time
   fdets_prep_sum <- fdets_prep %>% 
-    dplyr::group_by(tag,
-                    place,
-                    type,
-                    state,
-                    point,
+    dplyr::group_by(bird_band,
+                    tag,
                     dt_r,
                     grid_point)  %>%
     
@@ -44,15 +41,12 @@ prepare_fn <- function(dets,
                      .groups = "keep") %>% 
     
     ## Change groups
-    dplyr::group_by(tag,
-                    place,
-                    type,
-                    state,
-                    point,
+    dplyr::group_by(bird_band,
+                    tag,
                     dt_r) %>% 
     
     ## Number of grid points in the interval
-    dplyr::mutate(n_gp = n()) %>% 
+    dplyr::mutate(n_gp = dplyr::n()) %>% 
     
     ## Arrange by dt_r, rssi_gp and then shuffle any ties
     dplyr::arrange(dt_r, desc(rssi_gp_r), runif(nrow(.))) %>% 
@@ -71,13 +65,9 @@ prepare_fn <- function(dets,
     dplyr::filter(dist <= dist_filter) %>% 
     
     ## Calculate remaining nodes within interval and remove intervals without at least 3
-    dplyr::group_by(tag,
-                    place,
-                    type,
-                    state,
-                    point,
+    dplyr::group_by(bird_band,
                     dt_r) %>% 
-    dplyr::mutate(n_gp = n()) %>% 
+    dplyr::mutate(n_gp = dplyr::n()) %>% 
     dplyr::ungroup() %>% 
     dplyr::filter(n_gp >= 3) %>% 
     dplyr::as_tibble()  %>% 
@@ -87,7 +77,7 @@ prepare_fn <- function(dets,
                   dist_filter = dist_filter)  %>% 
     
     ## Group by:
-    dplyr::group_by(tag, place, type, state, point, dt_r) %>% 
+    dplyr::group_by(bird_band, tag, dt_r) %>% 
     
     ## Create interval id
     dplyr::mutate(int_id = dplyr::cur_group_id()) %>% 
@@ -99,4 +89,3 @@ prepare_fn <- function(dets,
   saveRDS(fdets_prep_sum, paste0("./outputs/prepared/",sumFun,"_",window,"_",lag,"_",dist_filter,".RDS"))
   
 }
-
