@@ -1,80 +1,67 @@
 ## Collect raw data
-collect_raw_data_fn <- function(db_name = db_name,
-                                db_password = db_password,
-                                output_folder = output_folder,
-                                tag_folder = tag_folder,
-                                node_folder = node_folder,
-                                grid_points_folder = grid_points_folder,
-                                band_f = band_f,
-                                tz = tz){
+collect_fn <- function(band_f,
+                       db_name,
+                       tag_log,
+                       station_ids,
+                       node_folder,
+                       output_folder,
+                       tz = tz){
   
   cat("############ \n",
       "Collecting raw data for band: ", band_f, "\n",
       "############ \n", 
       sep = "")
   
-  ## Connect to data base back end
-  conn <- DBI::dbConnect(RPostgres::Postgres(),
-                         dbname = db_name,
-                         password = db_password)
-  
-  ## Read in tag log and reformat
-  tag_log_mr <- sort(list.files(paste0(tag_folder),
-                                full.names = TRUE,
-                                pattern = "tag_log"),
-                     decreasing = TRUE)[1]
-  
-  ## Read in most recent tag log 
-  tag_log <- suppressWarnings(readxl::read_excel(paste0(tag_log_mr))  %>%
-                                janitor::clean_names() %>%
-                                dplyr::filter(bird_band == band_f) %>%
-                                dplyr::transmute(tag = gsub("NA",NA, tag),
-                                                 bird_band,
-                                                 tag_start_time = lubridate::mdy_hm(paste(date, time),
-                                                                                    tz = tz),
-                                                 tag_removal_time = lubridate::mdy_hm(paste(end_date, end_time), 
-                                                                                      tz = tz))  %>%
-                                dplyr::select(bird_band,
-                                              tag,
-                                              tag_start_time,
-                                              tag_removal_time) %>% 
-                                dplyr::mutate(tag_removal_time = if_else(is.na(tag_removal_time), Sys.time(), tag_removal_time)))
+  ## Filter tag log
+  tag_log = tag_log[tag_log$bird_band == band_f,]
   
   ## Time filters
   tag_start_dt <- min(tag_log$tag_start_time)
   tag_end_dt <- max(tag_log$tag_removal_time)
+  year = format(tag_start_dt, "%Y")
   
   ## Tag(s) based on focal band
   tags_f <- unique(tag_log$tag)
   
+  ## Connection to database
+  conn <- DBI::dbConnect(drv = duckdb::duckdb(dbdir = db_name,config = list("access_mode" = "READ_ONLY")))
+  
   ## Read in detections from database
-  dets_raw <- dplyr::tbl(conn, from = "raw") %>%
+  dets_raw <- dplyr::tbl(conn, "raw") %>%
+    
+    ## Keep only station ids matching the specified filter
+    dplyr::filter(station_id %in% station_ids) %>%
     
     ## Keep focal tag(s)
     dplyr::filter(tag_id %in% tags_f) %>%
     
-    ## Keep detections after deployment time and before removal times 
-    ## TODO: Update removal times to interval to account for period between deployments
+    ## Keep detections after deployment time and before removal time
     dplyr::filter(time > tag_start_dt) %>%
     dplyr::filter(time  <= tag_end_dt) %>%
     
+    ## Distinct
+    dplyr::distinct(tag_id,
+                    node_id,
+                    time,
+                    .keep_all = T) %>%
+    
     dplyr::collect() %>%
-    dplyr::transmute(tag = tag_id,
-                     date_time = lubridate::with_tz(time, tz = tz),
-                     node = toupper(node_id),
+    
+    ## Select and rename
+    dplyr::transmute(node = toupper(node_id),
+                     date_time = lubridate::with_tz(time, tz = "Australia/Broken_Hill"),
+                     tag = tag_id,
                      rssi = tag_rssi) %>%
-    dplyr::distinct(tag,
-                    node,
-                    date_time,
-                    .keep_all = T)
-  
+    
+    dplyr::arrange(date_time)
   
   # ## Check raw data
-  # ggplot(dets_raw) +
-  #   geom_point(aes(x=date_time,
-  #                  y=node,
-  #                  color = rssi))
-  # 
+  # ggplot2::ggplot(dets_raw) +
+  #   ggplot2::geom_point(ggplot2::aes(x=date_time,
+  #                                    shape=tag,
+  #                                    y=node,
+  #                                    color = rssi))
+  
   cat("############ \n",
       "Finished collecting raw data for band: ", band_f, "\n",
       "############ \n", 
@@ -142,7 +129,7 @@ collect_raw_data_fn <- function(db_name = db_name,
                     rssi) %>%
       data.frame()
     
-    ## Associate tag with correct band Convert to data.table and do a roiling join.
+    ## Associate tag with correct band 
     tag_log <- tag_log %>% 
       dplyr::rename(date_time = tag_start_time) %>% 
       dplyr::select(bird_band,
@@ -152,7 +139,7 @@ collect_raw_data_fn <- function(db_name = db_name,
     tag_log <- data.table::data.table(tag_log, key = c("tag", "date_time"))
     dets_f1 <- data.table::data.table(dets_f1, key = c("tag", "date_time"))
     
-    ## Rolling join node log to node records
+    ## Rolling join
     dets_f1 <- tag_log[dets_f1, roll = Inf]
     
     ## Remove tags without a band and where detection time is after removal time
@@ -173,37 +160,74 @@ collect_raw_data_fn <- function(db_name = db_name,
       dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day"),
                     grid_point = grid_point)
     
-    ## Summarize filtered data by day by grid point
+    # Summarize filtered data by day by grid point
     dets_sum <- dets_t %>% 
-      dplyr::group_by(date, grid_point) %>% 
+      dplyr::group_by(tag, date, grid_point) %>% 
       dplyr::summarise(dets = n(),
                        mean_rssi = mean(rssi),
                        .groups = "keep")
     
     ## Check filtered data
     dets_sum_plot <- ggplot2::ggplot(dets_sum) +
-      ggplot2::geom_point(aes(x=date,
-                              y=grid_point,
-                              color = mean_rssi,
-                              size = dets)) +
+      ggplot2::geom_point(ggplot2::aes(x=date,
+                                       y=grid_point,
+                                       shape=tag,
+                                       color = mean_rssi,
+                                       size = dets)) +
       ggplot2::scale_colour_gradientn(colours = wesanderson::wes_palette("Zissou1", 100, type = "continuous"), name = "rssi") +
       ggplot2::theme_minimal()
     
+
+    ## Create directory if missing
+    if(!dir.exists(paste0(output_folder,
+                          "/raw_detections/", 
+                          year,
+                          "/plots/"))){dir.create(paste0(output_folder,
+                                                        "/raw_detections/", 
+                                                        year,
+                                                        "/plots/"), recursive = T)}
     
+    ## Create directory if missing
+    if(!dir.exists(paste0(output_folder,
+                          "/raw_detections/", 
+                          year,
+                          "/data/"))){dir.create(paste0(output_folder,
+                                                        "/raw_detections/", 
+                                                        year,
+                                                        "/data/"), recursive = T)}
+    
+    
+    ## Plot
     ggplot2::ggsave(plot = dets_sum_plot,
-                    filename = paste0(output_folder,"/raw_detections/plots/", band_f,"_detection_summary.jpg"),
-                    scale = 2)
+                    filename = paste0(output_folder,
+                                      "/raw_detections/",
+                                      year,
+                                      "/plots/", 
+                                      band_f,
+                                      "_detection_summmary.jpg"),
+                    scale = 2,
+                    width = 7,
+                    height = 7,
+                    create.dir = TRUE)
+    
     
     ## Save raw data
     saveRDS(dets_t,
-            paste0(output_folder,"/raw_detections/data/",band_f,".RDS")) 
+            paste0(output_folder,
+                   "/raw_detections/", 
+                   year, 
+                   "/data/",
+                   band_f,
+                   ".RDS"))
     
+    ## Garbage cleanup
+    gc()
+    rm(dets_t)
     
     cat("############ \n",
         "Finished cleaning raw data for band: ", band_f, "\n",
         "############ \n", 
         sep = "")
-    
     
   } else{
     

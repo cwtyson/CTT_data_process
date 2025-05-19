@@ -1,312 +1,266 @@
-#' Localize prepared detections. This function takes files from prepare_dets.R.
-#'
-#' @param project Project name
-#' @param RSSI_model_file Model of RSSI and distance.
-#' @param reps Number of times to repeat each localization estimate to draw error ellipses
-#' 
-#' 
-localize <- function(project = as.character(),
-                     tags = NULL,
-                     RSSI_model_file = "./R/data/RSSI_log_distance_lm.RDS",
-                     reps = 1){
+## HPC localize
+hpc_localize_zebby_fn <- function(file_f,
+                                  rssi_dist_model_file,
+                                  model_scale = c("log", "exp"),
+                                  reps = 100){
   
-  cat("Starting to localized detection data\n")
+  # file_f = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/ml_prepared/2024/02743989/2024-10-08.csv.gz"
+  # rssi_dist_model_file = "./R/data/RSSI_log_dist_model_zebby.RDS"
   
-  ## Set up folders and files based on project
-  input_folder = here::here("project",
-                            project,
-                            "data/processed/detections/prepared/")
-  output_folder = here::here("project",
-                             project,
-                             "data/processed/detections/localized/")
-  grid_point_file =  here::here("project",
-                                project,
-                                "data/processed/field_data/grid_point_locations.RData")
+  ## Shortened file name for printing
+  file_f_ab <- paste(tail(unlist(strsplit(file_f,"/")),2),collapse="/")
   
-  ## Read in model
-  log_dist_RSSI_mdl <- readRDS(RSSI_model_file)
+  cat("############ \n",
+      "Opening file: ", file_f_ab, "\n",
+      "############ \n", sep = "")
   
-  ## Model table
-  mdl_tab <- broom::augment(log_dist_RSSI_mdl,
-                            newdata = data.frame(RSSI = seq(-25, -115, by = -1)),
-                            se_fit = TRUE) %>% 
-    dplyr::select(mean_RSSI = RSSI,
-                  mean = .fitted,
-                  sd = .se.fit) %>% 
-    dplyr::distinct(mean_RSSI,.keep_all = T)
+  start_time = Sys.time()
   
+  ## Read in prepared data
+  dets_p <- readr::read_csv(file_f)
   
-  ## Grid point locations, transformed to lat/lon
-  node_pts <- readRDS(grid_point_file) %>%
-    sf::st_transform(4326) %>% 
-    dplyr::transmute(gp = stringr::str_extract(grid_point, pattern = "^Gp[:digit:]{1,2}"),
-                     gp_lon = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
-                     gp_lat = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>% 
-    sf::st_drop_geometry()
+  # sample_ids = sample(dets_p$int_id, 20,replace = FALSE)
+  # 
+  # ## Sample
+  # dets_p <- dets_p %>% 
+  #   filter(int_id %in% sample_ids)
   
-  ## Tags to process
-  if(is.null(tags)){
+  ## New data to predict distance
+  new_data = data.frame(rssi = seq(max(dets_p$rssi_gp_r), 
+                                   min(dets_p$rssi_gp_r), 
+                                   by = -1))
+  
+  if(nrow(dets_p) > 0){
     
-    ## If not specified, then use all tags from input folder
-    tags <- list.files(path = input_folder)
-    
-  }
-  
-  ## Set progress bar
-  pb <- txtProgressBar(min = 0, max = length(tags), style = 3)
-  
-  ## Process each tag that hasn't already been processed  ######
-  for(tag_f in tags){
-    
-    ## Create directory if needed
-    if(!dir.exists(paste0(output_folder, tag_f))){
+    ## Augment
+    if(model_scale == "log"){
       
-      dir.create(paste0(output_folder, tag_f))  
-    }
-    
-    # tag_f <- tags[2]
-    
-    ## Progress bar
-    Sys.sleep(0.1)
-    setTxtProgressBar(pb, which(tag_f == tags))
-    
-    ## Prepared files
-    files_prep <- list.files(path = paste0(input_folder,
-                                           tag_f))
-    
-    ## Get files that have been localized
-    files_localized <- list.files(path = paste0(output_folder,
-                                                tag_f))
-    
-    ## If any files
-    if(length(files_prep[!(files_prep %in% files_localized)]) > 0){
+      ## Model
+      rssi_dist_mdl <- readRDS(rssi_dist_model_file) 
       
-      start_time <- as.character(Sys.time())
+      ## Model table
+      mdl_tab <- broom::augment(rssi_dist_mdl,
+                                newdata = new_data,
+                                se_fit = TRUE) %>% 
+        dplyr::select(rssi_gp_r = rssi,
+                      mean = .fitted,
+                      se = .se.fit)
       
-      cat("\n Starting tag:", tag_f, "at", start_time, "\n")
-      
-      ## Files to localize
-      files_2_localize <- paste0(input_folder,
-                                 tag_f,
-                                 "/",
-                                 files_prep[!(files_prep %in% files_localized)])
-      
-      # ## Get all files to process
-      # tag_f_files <- list.files(paste0(input_folder,
-      #                                  tag_f),
-      #                           full.names = T)
-      
-      ## Set progress bar
-      pb2 <- txtProgressBar(min = 0, max = length(files_2_localize), style = 3)
-      
-      ## Process each file for each tag separately ######
-      for (file in files_2_localize){
+      ## Add model data
+      dets_p <- dets_p %>% 
         
-        # file <- files_2_localize[6]
-        
-        ## Get current date
-        tag_f_date <- stringi::stri_sub(gsub(".csv","",file),-10)
-        
-        start_time_2 <- as.character(Sys.time())
-        
-        
-        cat("\n Starting date:", tag_f_date, "at", start_time_2, "\n")
-        
-        ## Progress bar
-        Sys.sleep(0.1)
-        setTxtProgressBar(pb2, which(files_2_localize == file))
-        
-        ## Get detections
-        dets <- readr::read_csv(file,
-                                show_col_types = FALSE,
-                                guess_max = 10000)
-        
-        ## Process for nls 
-        dets_p <- dets %>% 
-          
-          dplyr::select(-n_gp,
-                        -dets,
-                        -t_ind) %>% 
-          
-          dplyr::group_by(dt_r) %>% 
-          tidyr::pivot_longer(cols = contains("Gp"),
-                              names_to = "gp",
-                              values_to = "RSSI") %>% 
-          na.omit() %>%
-          dplyr::group_by(dt_r,
-                          gp) %>% 
-          dplyr::summarise(mean_RSSI = round(mean(RSSI),0),
-                           .groups = "keep")  %>% 
-          
-          ## Join model interval
-          dplyr::left_join(mdl_tab,
-                           by = "mean_RSSI")
-        
-        ## Retain periods with at least 3 nodes
-        dets_p <- dets_p %>% 
-          na.omit() %>% 
-          dplyr::group_by(dt_r) %>% 
-          dplyr::mutate(n_gp = dplyr::n()) %>% 
-          
-          ## Remove any periods with fewer than 3 gps
-          dplyr::filter(n_gp >= 3) %>%
-          dplyr::ungroup() %>% 
-          dplyr::mutate(t_ind = cumsum(!duplicated(dt_r))) %>% 
-          
-          ## Join node pts
-          dplyr::left_join(node_pts,
-                           by = "gp") 
-        
-        ## If any:
-        if(nrow(dets_p) > 0){
-          
-          cat("\n Intervals to localize:", max(dets_p$t_ind)*reps) 
-          
-          ## Empty df
-          tag_loc_est <- data.frame()
-          
-          ## For each interval
-          for(int in unique(dets_p$t_ind)){
-            
-            # int = unique(dets_p$t_ind)[10]
-            
-            tryCatch(
-              expr = {
-                
-                ## Subset detections
-                dets_p_int = dets_p[dets_p$t_ind == int,]
-                
-                ## Ellipse info
-                ellipse_center_est <- list()
-                ellipse_cov_est <- list()
-                
-                for(i in 1:reps){
-                  
-                  ## Sample within interval
-                  dets_p_int <- dets_p_int %>% 
-                    dplyr::rowwise() %>% 
-                    dplyr::mutate(dist_est_samp = round(exp(sample(rnorm(n = 100, 
-                                                                         mean = mean,
-                                                                         sd = sd),
-                                                                   size = 1)),0))
-                  
-                  # Determine the node with the strongest avg.RSSI value to be used as starting values
-                  max_RSSI <- dets_p_int[which.max(dets_p_int$mean_RSSI),]
-                  
-                  # Non-linear test to optimize the location of unknown signal by looking at the radius around each Node based on RSSI values (distance) and the pairwise distance between all nodes
-                  nls_mod <- suppressWarnings(nls(dist_est_samp ~ geosphere::distm(data.frame(gp_lon, gp_lat), 
-                                                                                   c(lng_solution, lat_solution), 
-                                                                                   fun = distHaversine), # distm - matrix of pairwise distances between lat/longs
-                                                  data = dets_p_int,
-                                                  start = list(lng_solution = max_RSSI$gp_lon,
-                                                               lat_solution = max_RSSI$gp_lat),
-                                                  control = nls.control(warnOnly = T,
-                                                                        minFactor=1/30000)))
-                  
-                  ## Determine error around the point location estimate
-                  ellipse <- car::confidenceEllipse(nls_mod, 
-                                                    levels = 1-exp(-1), 
-                                                    segments = 1000, 
-                                                    draw = F) 
-                  
-                  ## Project
-                  ellipse_coords_proj <- ellipse %>%
-                    data.frame() %>%
-                    sf::st_as_sf(coords = c("x", "y")) %>%
-                    sf::st_set_crs(4326) %>%
-                    sf::st_transform(22291) %>%
-                    dplyr::transmute(x = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,1],
-                                     y = as.matrix((sf::st_coordinates(.data$geometry)), ncol = 2)[,2]) %>%
-                    sf::st_drop_geometry()
-                  
-                  ## Ellipse error features
-                  ell.info <- cov.wt(ellipse_coords_proj)
-                  
-                  ## Add ellipse info to list
-                  ellipse_center_est[[i]] <- ell.info$center
-                  ellipse_cov_est[[i]] <- ell.info$cov
-                  
-                }
-                
-                ## Get average point
-                pts <- do.call(rbind, ellipse_center_est) %>% 
-                  as.data.frame()
-                mean_pt_est <- data.frame(x = mean(pts$x),
-                                          y = mean(pts$y))
-                
-                ## Get mean covariance matrix
-                mean_cov <- apply(simplify2array(ellipse_cov_est), c(1,2), mean)
-                eigen.info <- eigen(mean_cov)
-                
-                ## Axes
-                e <- sqrt(eigen.info$values)
-                a <- sqrt(e[1]/2)  # semi-major axis
-                b <- sqrt(e[2]/2)  # semi-minor axis
-                
-                ## Orientation
-                u <- eigen.info$vectors[,1] # major axis eigenvector
-                theta <- atan2(u[2],u[1]) # angle from x-axis in radians
-                theta <- theta *360/(2*pi) # angle from x-axis in degrees
-                theta <- theta - 90 # angle from y-axis in degrees
-                
-                ## Combine estimated locations with summary information
-                tag_int_loc_est <- data.frame(tag = tag_f,
-                                              dt_r = dets_p_int$dt_r[1],
-                                              n_gp = dets_p_int$n_gp[1],
-                                              mean_RSSI = mean(dets_p_int$mean_RSSI),
-                                              max_RSSI = max(dets_p_int$mean_RSSI),
-                                              x_est = mean_pt_est$x,
-                                              y_est = mean_pt_est$y,
-                                              semi_major = a,
-                                              semi_minor = b,
-                                              orientation = theta)
-                
-                ## Combine
-                tag_loc_est <- rbind(tag_loc_est, tag_int_loc_est)
-              },
-              error = function(e){ 
-                "Too few detections to trilaterate location"
-              }
-              
-            )
-            
-          }
-          
-          ## Save as separate file
-          readr::write_csv(tag_loc_est,
-                           paste0(output_folder, 
-                                  tag_f,
-                                  "/",
-                                  tag_f_date,
-                                  ".csv"))
-          
-          cat("\n Finished localizing after:", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes")
-          
-        } else {
-          
-          cat("\n No intervals to localize, skipped file")
-          
-        }
-        
-      } 
-      
-      
-      ## End progress bar for files
-      close(pb2)
+        ## Join modeled rssi values
+        dplyr::left_join(mdl_tab, by = dplyr::join_by(rssi_gp_r))
       
       
     } else{
       
-      cat("\n No new files to localize, skipped tag")
+      # ## Exp model file
+      # rssi_dist_model_file = "./data/rssi_dist_models/RSSI_nls_dist_model_2023.RDS"
+      # 
+      ## Model
+      rssi_dist_mdl <- readRDS(rssi_dist_model_file) 
       
+      ## NLS model
+      mdl_data =  broom::augment(rssi_dist_mdl) %>% 
+        dplyr::distinct(distance, rssi) %>% 
+        dplyr::arrange(dplyr::desc(distance))
       
+      ## Model parameters
+      a = as.numeric(-coef(rssi_dist_mdl)[2])
+      S = as.numeric(exp(coef(rssi_dist_mdl)[3]))
+      K = as.numeric(coef(rssi_dist_mdl)[1])
+      
+      ## Set reps to 1
+      reps = 1
+      
+      # tr <- invest(rssi_dist_mdl,
+      #              data = mdl_data,
+      #              mean.response = FALSE,
+      #              y0 = -70,
+      #              upper = 1000000,
+      #              interval="Wald") 
+      # 
+      # ## Create data frame of predicted values
+      # pred_df = map(.x = rev(sort(unique(mdl_data$rssi))),
+      #               .f = function(.x)   tryCatch(expr = {invest(rssi_dist_mdl,
+      #                                                           data = mdl_data,
+      #                                                           mean.response = FALSE,
+      #                                                           y0 = .x,
+      #                                                           upper = 1000000,
+      #                                                           interval="Wald") },
+      #                                            
+      #                                            ## If not defined, use mean value
+      #                                            error = function(error)  { .x %>% 
+      #                                                data.frame(estimate = ((log(.x - K) - log(a)) / -S))
+      #                                              
+      #                                              
+      #                                              
+      #                                            }))
     }
     
     
+    ## Empty df
+    tag_loc_est <- data.frame()
+    
+    ## Empty lists
+    tag_loc_est_list <- list()
+    cov_list <- list()
+    pe_df_list <- list()
+    
+    cat("\n Intervals to localize:", max(dets_p$int_id),  "with", reps, "resamples") 
+    
+    ## Set progress bar
+    pb <- txtProgressBar(min = 0, max = max(dets_p$int_id), style = 3)
+    
+    ## For each interval, localize X times
+    for(int in unique(dets_p$int_id)){
+      
+      ## Progress bar
+      Sys.sleep(0.1)
+      setTxtProgressBar(pb, which(int == 1:unique(max(dets_p$int_id))))
+      
+      ## Subset detections
+      dets_p_int = dets_p[dets_p$int_id == int,]
+      
+      ## Point estimates
+      pe <- list()
+      
+      for(i in 1:reps){
+        
+        ## Estimate distance
+        if(model_scale == "log"){
+          
+          ## Sample within interval
+          dets_p_int <- dets_p_int %>% 
+            dplyr::rowwise() %>%
+            dplyr::mutate(dist_est_samp = round(10^(rnorm(n = 1, 
+                                                          mean = mean,
+                                                          sd = se)),
+                                                0)) %>%
+            dplyr::ungroup()
+          
+        } else{
+          
+          ## Sample within interval
+          dets_p_int <- dets_p_int %>% 
+            dplyr::rowwise() %>%
+            dplyr::mutate(dist_est_samp = suppressWarnings(round((log(rssi_gp_r - K) - log(a)) / -S)))  %>%
+            
+            ## If less than 0, 0. If greater than 200 or NaN, 200
+            dplyr::mutate(dist_est_samp = dplyr::case_when(dist_est_samp < 0 ~ 0,
+                                                           dist_est_samp >= 200 ~ 200,
+                                                           is.nan(dist_est_samp) ~ 200,
+                                                           TRUE ~ dist_est_samp))
+        }
+        
+        tryCatch(
+          expr = {
+            
+            # Non-linear test to optimize the location estimate given pairwise distances
+            nls_mod <- suppressWarnings(nls(dist_est_samp ~ raster::pointDistance(data.frame(gp_x, gp_y), 
+                                                                                  c(x_solution, y_solution),
+                                                                                  lonlat = F, 
+                                                                                  allpairs = T), 
+                                            data = dets_p_int,
+                                            start = list(x_solution = dets_p_int[1,]$gp_x,
+                                                         y_solution = dets_p_int[1,]$gp_y),
+                                            control = nls.control(warnOnly = T,
+                                                                  maxiter=20,
+                                                                  minFactor=1/3000)))
+            
+            ## Combine point estimates
+            pe[[i]] <- c(coef(nls_mod)[1],
+                         coef(nls_mod)[2])
+            
+          },
+          
+          ## Print error message
+          error = function(e)  {cat("ERROR :",conditionMessage(e), "\n")})
+        
+      }
+      
+      ## Combine point estimates
+      pe_df <- do.call(dplyr::bind_rows, pe) %>% 
+        data.frame()
+      
+      ## Ellipse info from X repeated multilateration estimates
+      ell.info <- cov.wt(cbind(pe_df$x_solution, pe_df$y_solution))
+      
+      ## Center
+      x_est <- ell.info$center[1]
+      y_est <- ell.info$center[2]
+      
+      ## Axes
+      eigen.info <- eigen(ell.info$cov)
+      lengths <- sqrt(eigen.info$values * 2 * qf(.95, 2, reps-1))
+      a = lengths[1]
+      b = lengths[2]
+      
+      ## Orientation
+      u <- eigen.info$vectors[,1] # major axis eigenvector
+      theta <- atan2(u[2],u[1]) # angle from x-axis in radians
+      theta <- theta * 360/(2*pi) # angle from x-axis in degrees
+      theta <- theta-90 # angle from y-axis in degrees
+      
+      ## Combine estimated locations with summary information
+      tag_int_loc_est <- dets_p_int %>% 
+        dplyr::select(dplyr::where(~ dplyr::n_distinct(.) == dplyr::n_distinct(dets_p_int$int_id))) %>%     
+        dplyr::distinct() %>% 
+        dplyr::transmute(int_id,
+                         bird_band,
+                         tag,
+                         dt_r,
+                         x_est = x_est,
+                         y_est = y_est,
+                         semi_major = a,
+                         semi_minor = b,
+                         orientation = theta,
+                         mean_rssi = mean(dets_p_int$rssi_gp_r),
+                         max_rssi = max(dets_p_int$rssi_gp_r),
+                         n_gp) 
+      
+      ##  Get raw points
+      pe_df_p <- tag_int_loc_est %>% 
+        dplyr::left_join(pe_df %>% 
+                           dplyr::mutate(int_id = tag_int_loc_est$int_id),
+                         by = dplyr::join_by(int_id)) %>% 
+        dplyr::select(int_id, x_solution,y_solution)
+      
+      ## Add elements to list
+      tag_loc_est_list[int] <- list(tag_int_loc_est)
+      pe_df_list[int] <- list(pe_df_p)
+      cov_list[int] <- list(ell.info$cov)
+      
+    }
+    
+    ## Combine estimated locations, raw point estimates, and covariance matrices
+    tag_loc_est <- list(tag_loc_est_list %>% 
+                          do.call(dplyr::bind_rows, .),
+                        pe_df_list %>% 
+                          do.call(dplyr::bind_rows,.),
+                        cov_list)
+    
+    ## Name of outfile
+    outfile = gsub(".csv.gz",
+                   ".RDS",
+                   gsub("/ml_prepared/",
+                        "/ml_localized/",
+                        file_f))
+    
+    ## Create tag directory if needed
+    dir <- paste(head(unlist(strsplit(outfile,"/")),-1),collapse="/")
+    if (!dir.exists(dir)) dir.create(dir)
+    
+    ## Save lists as R data file
+    saveRDS(tag_loc_est,
+            outfile)
+    
+    cat("\n Finished file:", file_f_ab, "-", length(unique(dets_p$int_id)), "intervals localized", 
+        "after", round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 1), "minutes \n") 
+  } else {
+    
+    cat("\n No intervals to localize, skipped file:", file_f_ab)
+    
   }
-  
-  ## End progress bar for all tags
-  close(pb)
-  
-  
 }
