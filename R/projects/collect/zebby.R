@@ -7,7 +7,7 @@ library(geosphere)
 ## Set parallel options
 cores = parallel::detectCores()
 cl <- parallel::makeForkCluster(cores-9, outfile = "")
-source("/Users/tracking/git/CTT_data_process/R/functions/collect_fn.R")
+source("/Users/tracking/git/CTT_data_process/R/functions/collect.R")
 
 ## Set time zone
 tz = "Australia/Broken_Hill"

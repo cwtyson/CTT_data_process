@@ -5,7 +5,7 @@ library(geosphere)
 
 ## Source functions
 source("/Users/tracking/git/CTT_data_process/R/functions/get_grid_points_fn_zebby.R")
-source("/Users/tracking/git/CTT_data_process/R/functions/ml_prepare_dets_error_fn.R")
+source("/Users/tracking/git/CTT_data_process/R/functions/prepare.R")
 
 ## Set parallel options
 cores = parallel::detectCores()
@@ -59,10 +59,8 @@ tag_log_all  <- suppressWarnings(readxl::read_excel(tag_log_mr) %>%
 ## Bird bands from most recent log
 bird_bands = unique(tag_log_all$bird_band)
 
-band_f = "02745374"
-
 ## Run in terminal as:
-# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/prepare/prepare_zebby.R
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES Rscript ./R/projects/prepare/ebby.R
 
 foreach(band_f = bird_bands,
         # .packages=c("dplyr","lubridate","readr","geosphere"),
@@ -70,13 +68,13 @@ foreach(band_f = bird_bands,
   { 
     
     ## Prepare each tag
-    ml_prepare_dets_error_fn(band_f = band_f,
-                             output_folder = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/",
-                             grid_points_folder = "/Users/tracking/Google Drive/My Drive/Zebby_tracking_field_data/grid_points/",
-                             tz = "Australia/Broken_Hill",
-                             crs = 3308,
-                             sumFun = "mean",
-                             window = "30 secs",
-                             lag = "0 secs",
-                             dist_filter = 175)
+    preapre(band_f = band_f,
+            output_folder = "/Users/tracking/Documents/research/processed_data/zebby/processed_detections/",
+            grid_points_folder = "/Users/tracking/Google Drive/My Drive/Zebby_tracking_field_data/grid_points/",
+            tz = "Australia/Broken_Hill",
+            crs = 3308,
+            sumFun = "mean",
+            window = "30 secs",
+            lag = "0 secs",
+            dist_filter = 175)
   }
