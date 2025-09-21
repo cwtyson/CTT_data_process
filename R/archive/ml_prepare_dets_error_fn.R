@@ -13,7 +13,7 @@ ml_prepare_dets_error_fn <- function(band_f,
   
   ## Read in raw data
   dets_t <- readRDS(path)
-  
+
   year = format(min(dets_t$date_time),"%Y")
   
   ## Get most recently prepared data file (if it exists)
@@ -58,7 +58,7 @@ ml_prepare_dets_error_fn <- function(band_f,
     
     ## Get grid points
     grid_points <- get_grid_points_fn_zebby(grid_points_folder,
-                                            crs = 3308)
+                                            crs = crs)
     
     
     ## Files that still need to be prepared
