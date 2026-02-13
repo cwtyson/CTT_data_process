@@ -9,7 +9,7 @@ prepare <- function(band_f,
                     dist_filter = 175){
   
   ## Get raw file path
-  path = list.files(paste0(output_folder, "raw_detections", "/"),pattern = band_f,recursive = T,full.names = T)[grep("data",list.files(paste0(output_folder, "raw_detections", "/"),pattern = band_f,recursive = T))]
+  path = list.files(paste0(output_folder, "/raw_detections", "/"),pattern = band_f,recursive = T,full.names = T)[grep("data",list.files(paste0(output_folder, "/raw_detections", "/"),pattern = band_f,recursive = T))]
   
   ## Read in raw data
   dets_t <- readRDS(path)
@@ -31,14 +31,20 @@ prepare <- function(band_f,
     mrd <- min(dets_t$date_time)
   }
   
+  ## Current date
+  current_date = lubridate::force_tz(Sys.Date(), "Australia/Broken_Hill")
+  
   ## Filter detections based on prepared data
   dets_t <- dets_t %>%
-    dplyr::filter(date_time >= mrd)
+    dplyr::filter(date_time >= mrd) %>% 
+    
+    ## Do prepare detections from current day
+    dplyr::filter(date_time < current_date)
   
   ## If new data to prepare:
   if(nrow(dets_t) > 0){
     
-    ## Get unique days in raw data
+    ## Get unique days in raw data    
     raw_days <- unique(dets_t$date)
     
     ## Most recent day
@@ -78,7 +84,7 @@ prepare <- function(band_f,
         # 
         # day_f = days2prepare[1]
         
-        day_f_f <- as.Date(day_f, tz = tz)
+        day_f_f <- as.Date(day_f)
         
         ## Retain detections on that day
         dets_2_prepare <- dets_t %>% 
@@ -163,17 +169,24 @@ prepare <- function(band_f,
             dir.create(paste0(output_folder,"/ml_prepared/", year, "/", band_f), recursive = T)
           }  
           
-          ## Split based on date round and save
-          readr::write_csv(x= fdets_prep_sum, 
-                           file = paste0(output_folder,
-                                         "/ml_prepared/",
-                                         year,
-                                         "/", 
-                                         band_f,
-                                         "/",
-                                         day_f,
-                                         ".csv.gz"))
+          ## If any detections, save:
+          if(nrow(fdets_prep_sum)>0){
+            
+            
+            ## Save
+            readr::write_csv(x= fdets_prep_sum, 
+                             file = paste0(output_folder,
+                                           "/ml_prepared/",
+                                           year,
+                                           "/", 
+                                           band_f,
+                                           "/",
+                                           day_f,
+                                           ".csv.gz"))
+            
+          }
           
+     
           cat("\n Finished tag:", band_f, "- day:", day_f,"\n")
           
           

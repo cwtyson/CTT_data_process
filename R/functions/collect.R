@@ -27,7 +27,7 @@ collect_fn <- function(band_f,
   conn <- DBI::dbConnect(drv = duckdb::duckdb(dbdir = db_name,config = list("access_mode" = "READ_ONLY")))
   
   ## Read in detections from database
-  dets_raw <- dplyr::tbl(conn, "raw") %>%
+  dets_raw_og <- dplyr::tbl(conn, "raw") %>%
     
     ## Keep only station ids matching the specified filter
     dplyr::filter(station_id %in% station_ids) %>%
@@ -49,19 +49,52 @@ collect_fn <- function(band_f,
     
     ## Select and rename
     dplyr::transmute(node = toupper(node_id),
-                     date_time = lubridate::with_tz(time, tz = "Australia/Broken_Hill"),
+                     date_time = lubridate::with_tz(time, tz = tz),
                      tag = tag_id,
                      rssi = tag_rssi) %>%
     
     dplyr::arrange(date_time)
+  
+  ## Read in detections from postgres database
+  dets_raw_blu <- dplyr::tbl(conn, "blu") %>%
+    
+    ## Keep only station ids matching the specified filter
+    dplyr::filter(station_id %in% station_ids) %>%
+    
+    ## Keep focal tag(s)
+    dplyr::filter(tag_id %in% tags_f) %>%
+    
+    ## Keep detections after deployment time and before removal time
+    dplyr::filter(time > tag_start_dt) %>%
+    dplyr::filter(time  <= tag_end_dt) %>%
+    
+    ## Distinct
+    dplyr::distinct(tag_id,
+                    node_id,
+                    time,
+                    .keep_all = T) %>%
+    
+    dplyr::collect() %>%
+    
+    ## Select and rename
+    dplyr::transmute(node = toupper(node_id),
+                     date_time = lubridate::with_tz(time, tz = tz),
+                     tag = tag_id,
+                     rssi = tag_rssi) %>%
+    
+    dplyr::arrange(date_time)
+  
+  ## Combine
+  dets_raw <- bind_rows(dets_raw_og, dets_raw_blu)
   
   # ## Check raw data
   # ggplot2::ggplot(dets_raw) +
   #   ggplot2::geom_point(ggplot2::aes(x=date_time,
   #                                    shape=tag,
   #                                    y=node,
-  #                                    color = rssi))
-  
+  #                                    color = rssi)) +
+  #   ggplot2::theme_minimal()
+  # 
   cat("############ \n",
       "Finished collecting raw data for band: ", band_f, "\n",
       "############ \n", 
@@ -75,13 +108,11 @@ collect_fn <- function(band_f,
         "############ \n", 
         sep = "")
     
-    
     ## Read in tag log and reformat
     node_codes_mr <- sort(list.files(node_folder,
                                      full.names = TRUE,
                                      pattern = "node_codes"),
                           decreasing = TRUE)[1]
-    
     
     ## Read in node codes
     node_codes <- readxl::read_xlsx(node_codes_mr) %>%
@@ -94,9 +125,10 @@ collect_fn <- function(band_f,
                         decreasing = TRUE)[1]
     
     node_log <- suppressWarnings(readxl::read_excel(path = node_log_mr) %>%
+                                   dplyr::select(grid_point, node_number, start_date, start_time, end_date, end_time) %>% 
                                    dplyr::mutate(deployment_time = lubridate::parse_date_time(paste(start_date, start_time), "dmy HM", tz = tz),
                                                  removal_time = lubridate::parse_date_time(paste(end_date, end_time), "dmy HM", tz = tz)) %>%
-                                   filter(location=="gp") %>% 
+                                   
                                    ## Join node node
                                    dplyr::left_join(node_codes,
                                                     by  = "node_number") %>%
@@ -157,7 +189,7 @@ collect_fn <- function(band_f,
     
     ## Add day column
     dets_t <- dets_f2 %>%
-      dplyr::mutate(date = lubridate::floor_date(date_time, unit = "day"),
+      dplyr::mutate(date = lubridate::floor_date(date_time, unit = "1 day"),
                     grid_point = grid_point)
     
     # Summarize filtered data by day by grid point
@@ -177,15 +209,15 @@ collect_fn <- function(band_f,
       ggplot2::scale_colour_gradientn(colours = wesanderson::wes_palette("Zissou1", 100, type = "continuous"), name = "rssi") +
       ggplot2::theme_minimal()
     
-
+    
     ## Create directory if missing
     if(!dir.exists(paste0(output_folder,
                           "/raw_detections/", 
                           year,
                           "/plots/"))){dir.create(paste0(output_folder,
-                                                        "/raw_detections/", 
-                                                        year,
-                                                        "/plots/"), recursive = T)}
+                                                         "/raw_detections/", 
+                                                         year,
+                                                         "/plots/"), recursive = T)}
     
     ## Create directory if missing
     if(!dir.exists(paste0(output_folder,

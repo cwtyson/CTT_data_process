@@ -4,8 +4,7 @@ get_grid_points_fn_zebby <- function(grid_points_folder,
   
   ## Get all grid point files
   all_grid_points <- sort(list.files(grid_points_folder,
-                                     full.names = TRUE,
-                                     pattern = "points"),
+                                     full.names = TRUE),
                           decreasing = TRUE)
   
   ## Read in each file and combine
