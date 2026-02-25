@@ -63,7 +63,7 @@ prepare <- function(band_f,
     days2prepare <- as.character(raw_days[raw_days >= mrd])
     
     ## Get grid points
-    grid_points <- get_grid_points_fn_zebby(grid_points_folder,
+    grid_points <- get_grid_points_fn_gt(grid_points_folder,
                                             crs = crs)
     
     
